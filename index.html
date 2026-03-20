@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RunFlow | Core Engine V2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-container">
+
+    <div id="vista-onboarding" class="vista-activa">
+        <header class="header-onboarding">
+            <h1 class="titulo-principal">Calibración del Motor</h1>
+            <p class="subtitulo">Ingresa tus métricas base para generar el macrociclo.</p>
+        </header>
+
+        <div class="tarjeta-bento">
+            <h3 class="seccion-titulo">1. Logística y Meta</h3>
+            <label class="label-tecnico mt-3">FECHA DE LA CARRERA</label>
+            <input type="date" id="input-fecha" class="input-moderno" value="2026-05-31">
+
+            <div class="grid-2-col mt-3">
+                <div>
+                    <label class="label-tecnico">DISTANCIA</label>
+                    <select id="input-distancia" class="input-moderno">
+                        <option value="5">5K</option>
+                        <option value="10" selected>10K</option>
+                        <option value="21">HM (21K)</option>
+                        <option value="42">Maratón</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-tecnico">DÍAS / SEMANA</label>
+                    <select id="input-dias" class="input-moderno">
+                        <option value="3">3 Días</option>
+                        <option value="4" selected>4 Días</option>
+                        <option value="5">5 Días</option>
+                    </select>
+                </div>
+            </div>
+
+            <h3 class="seccion-titulo mt-4">2. Estado Físico Actual</h3>
+            <label class="label-tecnico">VOLUMEN SEMANAL ACTUAL (KM)</label>
+            <input type="number" id="input-volumen" class="input-moderno" value="15" min="0">
+
+            <label class="label-tecnico mt-3">DÍA PREFERIDO TIRADA LARGA</label>
+            <select id="input-dialargo" class="input-moderno">
+                <option value="0" selected>Domingo</option>
+                <option value="6">Sábado</option>
+            </select>
+        </div>
+
+        <button onclick="guardarPerfil()" class="btn-primario mt-4">Compilar Plan de Entrenamiento →</button>
+    </div>
+
+    <div id="vista-entreno" class="vista-oculta">
+        
+        <div class="progreso-header">
+            <div style="display: flex; justify-content: space-between;">
+                <span class="label-tecnico">SEMANA <span id="semana-actual"></span> DE <span id="semana-total"></span></span>
+                <span class="badge-fase" id="fase-actual">Fase Base</span>
+            </div>
+            <div class="barra-fondo"><div class="barra-llena" style="width: 0%;"></div></div>
+        </div>
+
+        <div class="tarjeta-bento tarjeta-resumen mb-3">
+            <h4 class="label-tecnico" style="color: var(--acento-terracota);">FOCUS DE LA SEMANA</h4>
+            <p id="resumen-ejecutivo" class="texto-pequeno">Cargando...</p>
+        </div>
+
+        <div class="tarjeta-bento tarjeta-entreno" id="bento-hoy">
+            <div class="fecha-etiqueta" id="fecha-hoy">Cargando...</div>
+            <h2 class="tipo-entrenamiento" id="tipo-entreno">Cargando...</h2>
+            
+            <div class="gran-metrica" id="metrica-entreno">- <span class="unidad">MIN</span></div>
+            
+            <div class="detalle-tecnico" id="detalle-entreno">...</div>
+            
+            <div id="modulo-extra" class="modulo-extra mt-3" style="display: none;"></div>
+        </div>
+
+        <div class="tarjeta-bento tarjeta-feedback mt-3" id="seccion-feedback">
+            <button id="btn-completar" class="btn-secundario" onclick="abrirFeedback()">Registrar Datos Fisiológicos</button>
+            
+            <div id="panel-rpe" style="display: none; margin-top: 15px;">
+                <label class="label-tecnico">ESFUERZO PERCIBIDO (RPE 1-10)</label>
+                <input type="range" min="1" max="10" value="5" class="slider-rpe" id="input-rpe" oninput="actualizarDisplay('valor-rpe', this.value)">
+                <div class="rpe-display"><span id="valor-rpe">5</span></div>
+
+                <label class="label-tecnico mt-3">CALIDAD DEL SUEÑO (Horas)</label>
+                <input type="range" min="3" max="10" value="7" class="slider-rpe" id="input-sueno" oninput="actualizarDisplay('valor-sueno', this.value)">
+                <div class="rpe-display" style="color: #3498db;"><span id="valor-sueno">7</span>h</div>
+                
+                <label class="label-tecnico mt-3">DOLOR / MOLESTIA ARTICULAR (1-10)</label>
+                <input type="range" min="0" max="10" value="0" class="slider-rpe" id="input-dolor" oninput="actualizarDisplay('valor-dolor', this.value)">
+                <div class="rpe-display" style="color: #e74c3c;"><span id="valor-dolor">0</span></div>
+
+                <button class="btn-primario mt-4" style="padding: 10px;" onclick="guardarFeedback()">Procesar ACWR</button>
+            </div>
+        </div>
+
+        <div class="navegacion-pildoras mt-4">
+            <button class="btn-pildora" onclick="cambiarDia(-1)">← Ayer</button>
+            <button class="btn-pildora pill-activa" onclick="irAHoy()">Hoy</button>
+            <button class="btn-pildora" onclick="cambiarDia(1)">Mañana →</button>
+        </div>
+        <button class="btn-fantasma mt-4" onclick="toggleCajon()">Ver Macrociclo Completo ⬆</button>
+    </div>
+
+    <div id="cajon-historial" class="cajon-oculto">
+        <div class="cajon-header">
+            <h3 class="titulo-cajon">Macrociclo VDOT</h3>
+            <button class="btn-cerrar" onclick="toggleCajon()">✕</button>
+        </div>
+        <div class="lista-dias" id="contenedor-lista-plan"></div>
+        <button class="btn-peligro mt-4" onclick="borrarPlan()">Resetear Motor</button>
+    </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
