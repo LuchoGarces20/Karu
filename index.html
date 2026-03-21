@@ -1,32 +1,38 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RunFlow | Core Engine V2</title>
+    <title>RunFlow | Core Engine V4</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
-<div class="app-container">
+<main class="app-container">
+    <div class="lang-switcher">
+        <button onclick="cambiarIdioma('pt')" id="btn-lang-pt" class="lang-activa">PT</button>
+        <button onclick="cambiarIdioma('es')" id="btn-lang-es">ES</button>
+        <button onclick="cambiarIdioma('en')" id="btn-lang-en">EN</button>
+    </div>
 
-    <div id="vista-onboarding" class="vista-activa">
-        <header class="header-onboarding">
-            <h1 class="titulo-principal">Calibración del Motor</h1>
-            <p class="subtitulo">Ingresa tus métricas base para generar el macrociclo.</p>
+    <section id="vista-onboarding" class="vista-activa">
+        <header class="header-onboarding mt-4">
+            <h1 class="titulo-principal" data-i18n="tituloApp">Calibração do Motor</h1>
+            <p class="subtitulo" data-i18n="subtituloApp">Insira suas métricas base para gerar o macrociclo.</p>
         </header>
 
         <div class="tarjeta-bento">
-            <h3 class="seccion-titulo">1. Logística y Meta</h3>
-            <label class="label-tecnico mt-3">FECHA DE LA CARRERA</label>
+            <h3 class="seccion-titulo" data-i18n="logisticaMeta">1. Logística e Meta</h3>
+            <label class="label-tecnico mt-3" data-i18n="dataCorrida">DATA DA CORRIDA</label>
             <input type="date" id="input-fecha" class="input-moderno" value="2026-05-31">
 
             <div class="grid-2-col mt-3">
                 <div>
-                    <label class="label-tecnico">DISTANCIA</label>
+                    <label class="label-tecnico" data-i18n="distancia">DISTÂNCIA</label>
                     <select id="input-distancia" class="input-moderno">
                         <option value="5">5K</option>
                         <option value="10" selected>10K</option>
@@ -35,92 +41,105 @@
                     </select>
                 </div>
                 <div>
-                    <label class="label-tecnico">DÍAS / SEMANA</label>
+                    <label class="label-tecnico" data-i18n="diasSemana">DIAS / SEMANA</label>
                     <select id="input-dias" class="input-moderno">
-                        <option value="3">3 Días</option>
-                        <option value="4" selected>4 Días</option>
-                        <option value="5">5 Días</option>
+                        <option value="3" data-i18n="dias3">3 Dias</option>
+                        <option value="4" selected data-i18n="dias4">4 Dias</option>
+                        <option value="5" data-i18n="dias5">5 Dias</option>
                     </select>
                 </div>
             </div>
 
-            <h3 class="seccion-titulo mt-4">2. Estado Físico Actual</h3>
-            <label class="label-tecnico">VOLUMEN SEMANAL ACTUAL (KM)</label>
+            <h3 class="seccion-titulo mt-4" data-i18n="estadoAtual">2. Estado Físico Atual</h3>
+            <label class="label-tecnico" data-i18n="volumenSemanal">VOLUMEN SEMANAL ATUAL (KM)</label>
             <input type="number" id="input-volumen" class="input-moderno" value="15" min="0">
 
-            <label class="label-tecnico mt-3">DÍA PREFERIDO TIRADA LARGA</label>
+            <label class="label-tecnico mt-3" data-i18n="diaLongo">DIA PREFERIDO TIRADA LONGA</label>
             <select id="input-dialargo" class="input-moderno">
-                <option value="0" selected>Domingo</option>
-                <option value="6">Sábado</option>
+                <option value="0" selected data-i18n="domingo">Domingo</option>
+                <option value="6" data-i18n="sabado">Sábado</option>
             </select>
         </div>
 
-        <button onclick="guardarPerfil()" class="btn-primario mt-4">Compilar Plan de Entrenamiento →</button>
-    </div>
+        <button id="btn-gerar-plano" class="btn-primario mt-4" data-i18n="btnCompilar">Compilar Plano de Treinamento →</button>
+    </section>
 
-    <div id="vista-entreno" class="vista-oculta">
+    <section id="vista-entreno" class="vista-oculta">
         
-        <div class="progreso-header">
-            <div style="display: flex; justify-content: space-between;">
-                <span class="label-tecnico">SEMANA <span id="semana-actual"></span> DE <span id="semana-total"></span></span>
+        <div class="progreso-header flex-between mt-4">
+            <div>
+                <span class="label-tecnico"><span data-i18n="semana">SEMANA</span> <span id="semana-actual"></span> / <span id="semana-total"></span></span>
+            </div>
+            <div>
                 <span class="badge-fase" id="fase-actual">Fase Base</span>
             </div>
-            <div class="barra-fondo"><div class="barra-llena" style="width: 0%;"></div></div>
         </div>
+        <div class="barra-fondo"><div class="barra-llena" id="barra-progreso" style="width: 0%;"></div></div>
 
-        <div class="tarjeta-bento tarjeta-resumen mb-3">
-            <h4 class="label-tecnico" style="color: var(--acento-terracota);">FOCUS DE LA SEMANA</h4>
-            <p id="resumen-ejecutivo" class="texto-pequeno">Cargando...</p>
+        <div class="tarjeta-bento tarjeta-resumen mb-3 mt-3">
+            <h4 class="label-tecnico text-terracota" data-i18n="focusSemana">FOCUS DA SEMANA</h4>
+            <p id="resumen-ejecutivo" class="texto-pequeno">Carregando...</p>
         </div>
 
         <div class="tarjeta-bento tarjeta-entreno" id="bento-hoy">
-            <div class="fecha-etiqueta" id="fecha-hoy">Cargando...</div>
-            <h2 class="tipo-entrenamiento" id="tipo-entreno">Cargando...</h2>
+            <div class="label-tecnico" id="fecha-hoy">Carregando...</div>
+            <h2 class="tipo-entrenamiento mt-1" id="tipo-entreno">Carregando...</h2>
             
             <div class="gran-metrica" id="metrica-entreno">- <span class="unidad">MIN</span></div>
             
             <div class="detalle-tecnico" id="detalle-entreno">...</div>
             
-            <div id="modulo-extra" class="modulo-extra mt-3" style="display: none;"></div>
+            <div id="modulo-extra" class="modulo-extra mt-3 vista-oculta"></div>
         </div>
 
         <div class="tarjeta-bento tarjeta-feedback mt-3" id="seccion-feedback">
-            <button id="btn-completar" class="btn-secundario" onclick="abrirFeedback()">Registrar Datos Fisiológicos</button>
+            <button id="btn-abrir-feedback" class="btn-secundario" data-i18n="btnRegistrar">Registrar Treino Executado</button>
             
-            <div id="panel-rpe" style="display: none; margin-top: 15px;">
-                <label class="label-tecnico">ESFUERZO PERCIBIDO (RPE 1-10)</label>
-                <input type="range" min="1" max="10" value="5" class="slider-rpe" id="input-rpe" oninput="actualizarDisplay('valor-rpe', this.value)">
-                <div class="rpe-display"><span id="valor-rpe">5</span></div>
+            <div id="panel-rpe" class="vista-oculta mt-3">
+                <div class="grid-2-col">
+                    <div>
+                        <label class="label-tecnico" data-i18n="distReal">DISTÂNCIA REAL (KM)</label>
+                        <input type="number" id="input-dist-real" class="input-moderno" step="0.1" placeholder="Ex: 5.2">
+                    </div>
+                    <div>
+                        <label class="label-tecnico" data-i18n="tempoReal">TEMPO REAL (MIN)</label>
+                        <input type="number" id="input-tempo-real" class="input-moderno" placeholder="Ex: 45">
+                    </div>
+                </div>
 
-                <label class="label-tecnico mt-3">CALIDAD DEL SUEÑO (Horas)</label>
-                <input type="range" min="3" max="10" value="7" class="slider-rpe" id="input-sueno" oninput="actualizarDisplay('valor-sueno', this.value)">
-                <div class="rpe-display" style="color: #3498db;"><span id="valor-sueno">7</span>h</div>
-                
-                <label class="label-tecnico mt-3">DOLOR / MOLESTIA ARTICULAR (1-10)</label>
-                <input type="range" min="0" max="10" value="0" class="slider-rpe" id="input-dolor" oninput="actualizarDisplay('valor-dolor', this.value)">
-                <div class="rpe-display" style="color: #e74c3c;"><span id="valor-dolor">0</span></div>
+                <label class="label-tecnico mt-3" data-i18n="rpe">ESFORÇO PERCEBIDO (RPE 1-10)</label>
+                <input type="range" min="1" max="10" value="5" class="slider-rpe" id="input-rpe">
+                <div class="rpe-display text-ambar"><span id="valor-rpe">5</span></div>
 
-                <button class="btn-primario mt-4" style="padding: 10px;" onclick="guardarFeedback()">Procesar ACWR</button>
+                <button id="btn-processar-feedback" class="btn-primario mt-4 py-2" data-i18n="btnProcessar">Processar Carga Interna</button>
             </div>
         </div>
 
-        <div class="navegacion-pildoras mt-4">
-            <button class="btn-pildora" onclick="cambiarDia(-1)">← Ayer</button>
-            <button class="btn-pildora pill-activa" onclick="irAHoy()">Hoy</button>
-            <button class="btn-pildora" onclick="cambiarDia(1)">Mañana →</button>
-        </div>
-        <button class="btn-fantasma mt-4" onclick="toggleCajon()">Ver Macrociclo Completo ⬆</button>
-    </div>
+        <nav class="navegacion-pildoras mt-4">
+            <button id="btn-nav-ayer" class="btn-pildora" data-i18n="navOntem">← Ontem</button>
+            <button id="btn-nav-hoy" class="btn-pildora pill-activa" data-i18n="navHoje">Hoje</button>
+            <button id="btn-nav-manana" class="btn-pildora" data-i18n="navAmanha">Amanhã →</button>
+        </nav>
+        
+        <button id="btn-toggle-cajon" class="btn-fantasma mt-4" data-i18n="btnVerCiclo">Ver Macrociclo Completo ⬆</button>
+    </section>
 
-    <div id="cajon-historial" class="cajon-oculto">
-        <div class="cajon-header">
-            <h3 class="titulo-cajon">Macrociclo VDOT</h3>
-            <button class="btn-cerrar" onclick="toggleCajon()">✕</button>
+    <aside id="cajon-historial" class="cajon-oculto">
+        <div class="cajon-header flex-between">
+            <h3 class="titulo-cajon" data-i18n="tituloCiclo">Macrociclo VDOT</h3>
+            <button id="btn-cerrar-cajon" class="btn-cerrar">✕</button>
         </div>
-        <div class="lista-dias" id="contenedor-lista-plan"></div>
-        <button class="btn-peligro mt-4" onclick="borrarPlan()">Resetear Motor</button>
-    </div>
-</div>
+        
+        <button id="btn-exportar-pdf" class="btn-secundario mb-3" data-i18n="btnExportar">📄 Exportar Plano (PDF)</button>
+        
+        <div id="area-exportacao-pdf">
+            <div class="lista-dias" id="contenedor-lista-plan"></div>
+        </div>
+        
+        <button id="btn-reset-motor" class="btn-peligro mt-4" data-i18n="btnResetar">Resetar Motor</button>
+    </aside>
+
+</main>
 <script src="app.js"></script>
 </body>
 </html>

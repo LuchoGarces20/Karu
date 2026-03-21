@@ -1,22 +1,24 @@
 /* =========================================
-   VARIABLES DE DISEÑO (La Paleta)
+   VARIABLES DE DISEÑO (Paleta)
    ========================================= */
 :root {
-    --bg-color: #FEFDF5;      /* Blanco hueso cremoso */
-    --texto-principal: #2D2D2D; /* Carbón profundo */
-    --texto-secundario: #7A7A7A; /* Gris cálido */
+    --bg-color: #FEFDF5;      
+    --texto-principal: #2D2D2D; 
+    --texto-secundario: #7A7A7A; 
     
-    --acento-terracota: #C05746; /* Acción principal */
-    --acento-ambar: #F5A623;     /* Motivación / RPE */
+    --acento-terracota: #C05746; 
+    --acento-ambar: #F5A623;     
+    --acento-sucesso: #27ae60;
+    --acento-perigo: #e74c3c;
     
-    --bento-bg: #FFFFFF;         /* Fondo de las tarjetas */
+    --bento-bg: #FFFFFF;         
     --bento-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
     
     --border-radius: 20px;
 }
 
 /* =========================================
-   RESET Y BASE
+   RESET E BASE
    ========================================= */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -32,16 +34,48 @@ body {
 
 .app-container {
     width: 100%;
-    max-width: 480px; /* Tamaño móvil ideal, en Mac se verá como una columna central elegante */
+    max-width: 480px; 
     position: relative;
     min-height: 90vh;
 }
 
+/* Selector de Idiomas */
+.lang-switcher {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    gap: 5px;
+    z-index: 10;
+}
+.lang-switcher button {
+    background: transparent;
+    border: 1px solid #EAEAEA;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--texto-secundario);
+}
+.lang-switcher button.lang-activa {
+    background: var(--texto-principal);
+    color: white;
+    border-color: var(--texto-principal);
+}
+
 /* =========================================
-   UTILIDADES (Tipografía y Espaciado)
+   UTILITARIOS
    ========================================= */
+.mt-1 { margin-top: 5px; }
 .mt-3 { margin-top: 15px; }
 .mt-4 { margin-top: 25px; }
+.mb-3 { margin-bottom: 15px; }
+.py-2 { padding-top: 10px; padding-bottom: 10px; }
+
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.text-terracota { color: var(--acento-terracota) !important; }
+.text-ambar { color: var(--acento-ambar); }
 
 .titulo-principal {
     font-family: 'Space Grotesk', sans-serif;
@@ -51,309 +85,92 @@ body {
     margin-bottom: 10px;
 }
 
-.subtitulo {
-    font-weight: 300;
-    color: var(--texto-secundario);
-    font-size: 1rem;
-    margin-bottom: 30px;
-}
-
+.subtitulo { font-weight: 300; color: var(--texto-secundario); font-size: 1rem; margin-bottom: 30px; }
 .label-tecnico {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 1px;
-    color: var(--texto-secundario);
-    display: block;
-    margin-bottom: 5px;
+    font-family: 'Space Grotesk', sans-serif; font-size: 0.75rem;
+    font-weight: 700; letter-spacing: 1px; color: var(--texto-secundario);
+    display: block; margin-bottom: 5px;
 }
 
 /* =========================================
    COMPONENTES BENTO (Tarjetas)
    ========================================= */
 .tarjeta-bento {
-    background: var(--bento-bg);
-    border-radius: var(--border-radius);
-    padding: 24px;
-    box-shadow: var(--bento-shadow);
-    margin-bottom: 15px;
+    background: var(--bento-bg); border-radius: var(--border-radius);
+    padding: 24px; box-shadow: var(--bento-shadow); margin-bottom: 15px;
     border: 1px solid rgba(0,0,0,0.02);
 }
-
-.tarjeta-entreno {
-    border-left: 6px solid var(--acento-ambar); /* Este color lo cambiará el JS después */
-}
-
-.gran-metrica {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 4.5rem;
-    font-weight: 700;
-    line-height: 1;
-    margin: 10px 0;
-    letter-spacing: -2px;
-}
-
-.gran-metrica .unidad {
-    font-size: 1.2rem;
-    font-weight: 400;
-    color: var(--texto-secundario);
-    letter-spacing: 0;
-}
-
-.tipo-entrenamiento {
-    font-size: 1.2rem;
-    font-weight: 600;
-}
-
-.detalle-tecnico {
-    font-weight: 300;
-    font-size: 0.95rem;
-    line-height: 1.5;
-    color: var(--texto-secundario);
-}
+.tarjeta-entreno { border-left: 6px solid var(--acento-ambar); }
+.tarjeta-resumen { background: rgba(192, 87, 70, 0.05); border: 1px solid rgba(192, 87, 70, 0.1); padding: 15px 24px; }
+.gran-metrica { font-family: 'Space Grotesk', sans-serif; font-size: 4.5rem; font-weight: 700; line-height: 1; margin: 10px 0; letter-spacing: -2px; }
+.gran-metrica .unidad { font-size: 1.2rem; font-weight: 400; color: var(--texto-secundario); letter-spacing: 0; }
+.tipo-entrenamiento { font-size: 1.2rem; font-weight: 600; }
+.detalle-tecnico { font-weight: 300; font-size: 0.95rem; line-height: 1.5; color: var(--texto-secundario); }
+.texto-pequeno { font-size: 0.85rem; color: var(--texto-secundario); line-height: 1.4; margin-top: 5px; }
 
 /* =========================================
    FORMULARIOS Y BOTONES
    ========================================= */
 .input-moderno {
-    width: 100%;
-    padding: 14px;
-    border: 1px solid #EAEAEA;
-    border-radius: 12px;
-    font-family: 'Inter', sans-serif;
-    font-size: 1rem;
-    background: #FAFAFA;
-    transition: all 0.2s;
+    width: 100%; padding: 14px; border: 1px solid #EAEAEA; border-radius: 12px;
+    font-family: 'Inter', sans-serif; font-size: 1rem; background: #FAFAFA; transition: all 0.2s;
 }
-
-.input-moderno:focus {
-    outline: none;
-    border-color: var(--acento-terracota);
-    background: #FFF;
-}
-
+.input-moderno:focus { outline: none; border-color: var(--acento-terracota); background: #FFF; }
+.btn-primario, .btn-secundario, .btn-fantasma, .btn-peligro { width: 100%; border-radius: 12px; font-weight: 600; cursor: pointer; transition: transform 0.1s; }
 .btn-primario {
-    width: 100%;
-    padding: 16px;
-    background: var(--acento-terracota);
-    color: white;
-    border: none;
-    border-radius: 14px;
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: 1.1rem;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(192, 87, 70, 0.3);
-    transition: transform 0.1s;
+    padding: 16px; background: var(--acento-terracota); color: white; border: none;
+    font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(192, 87, 70, 0.3);
 }
-
 .btn-primario:active { transform: scale(0.98); }
+.btn-secundario { padding: 14px; background: #F5F5F5; color: var(--texto-principal); border: none; }
+.btn-fantasma { background: transparent; border: none; color: var(--texto-secundario); font-size: 0.9rem; }
+.btn-peligro { padding: 12px; background: #FFF; color: var(--acento-perigo); border: 1px solid var(--acento-perigo); }
 
-.btn-secundario {
-    width: 100%;
-    padding: 14px;
-    background: #F5F5F5;
-    color: var(--texto-principal);
-    border: none;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.btn-fantasma {
-    width: 100%;
-    background: transparent;
-    border: none;
-    color: var(--texto-secundario);
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.btn-peligro {
-    width: 100%;
-    padding: 12px;
-    background: #FFF;
-    color: #e74c3c;
-    border: 1px solid #e74c3c;
-    border-radius: 12px;
-    cursor: pointer;
-}
-
-/* Píldoras de Navegación */
+/* Navegación */
 .navegacion-pildoras {
-    display: flex;
-    justify-content: space-between;
-    background: var(--bento-bg);
-    border-radius: 30px;
-    padding: 5px;
-    box-shadow: var(--bento-shadow);
+    display: flex; justify-content: space-between; background: var(--bento-bg);
+    border-radius: 30px; padding: 5px; box-shadow: var(--bento-shadow);
 }
-
-.btn-pildora {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    background: transparent;
-    border-radius: 25px;
-    font-weight: 600;
-    color: var(--texto-secundario);
-    cursor: pointer;
-}
-
-.pill-activa {
-    background: var(--texto-principal);
-    color: white;
-}
+.btn-pildora { flex: 1; padding: 10px; border: none; background: transparent; border-radius: 25px; font-weight: 600; color: var(--texto-secundario); cursor: pointer; }
+.pill-activa { background: var(--texto-principal); color: white; }
 
 /* =========================================
-   BARRA DE PROGRESO & RPE SLIDER
+   UI COMPONENTS
    ========================================= */
-.progreso-header { margin-bottom: 20px; }
-
-.barra-fondo {
-    width: 100%;
-    height: 6px;
-    background: #EAEAEA;
-    border-radius: 3px;
-    margin-top: 8px;
-    overflow: hidden;
-}
-
-.barra-llena {
-    height: 100%;
-    background: var(--acento-ambar);
-    border-radius: 3px;
-    transition: width 0.5s ease;
-}
-
-/* Slider Custom */
-.slider-rpe {
-    -webkit-appearance: none;
-    width: 100%;
-    height: 8px;
-    border-radius: 4px;
-    background: #EAEAEA;
-    outline: none;
-    margin: 15px 0;
-}
-
+.barra-fondo { width: 100%; height: 6px; background: #EAEAEA; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+.barra-llena { height: 100%; background: var(--acento-ambar); border-radius: 3px; transition: width 0.5s ease; }
+.slider-rpe { -webkit-appearance: none; width: 100%; height: 8px; border-radius: 4px; background: #EAEAEA; outline: none; margin: 15px 0; }
 .slider-rpe::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    background: var(--acento-ambar);
-    cursor: pointer;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    -webkit-appearance: none; appearance: none; width: 24px; height: 24px;
+    border-radius: 50%; background: var(--acento-ambar); cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
-
-.rpe-display {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: var(--acento-ambar);
-}
-.rpe-texto { font-size: 1rem; color: var(--texto-secundario); font-weight: 400; }
+.rpe-display { font-family: 'Space Grotesk', sans-serif; font-size: 2.5rem; font-weight: 700; }
+.badge-fase { background: #2D2D2D; color: white; padding: 3px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.modulo-extra { background: #F8F9FA; padding: 12px; border-radius: 10px; font-size: 0.85rem; border-left: 3px solid #34495e; }
 
 /* =========================================
-   CAJÓN DEL HISTORIAL (Bottom Sheet)
+   BOTTOM SHEET & PDF STYLES
    ========================================= */
 .cajon-oculto {
-    position: fixed;
-    bottom: -100%;
-    left: 0;
-    width: 100%;
-    height: 85vh;
-    background: var(--bg-color);
-    border-radius: 30px 30px 0 0;
+    position: fixed; bottom: -100%; left: 0; width: 100%; height: 85vh;
+    background: var(--bg-color); border-radius: 30px 30px 0 0;
     box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
     transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    z-index: 100;
-    padding: 30px 20px;
-    overflow-y: auto;
+    z-index: 100; padding: 30px 20px; overflow-y: auto;
 }
-
 .cajon-abierto { bottom: 0; }
-
-.cajon-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+.cajon-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; margin-bottom: 20px; }
+.titulo-cajon { font-size: 1.4rem; margin: 0; line-height: 1.2; }
+.btn-cerrar { 
+    background: #EAEAEA; border: none; width: 32px; height: 32px; border-radius: 50%; 
+    font-size: 1rem; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
 }
-
-.titulo-cajon {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.5rem;
-}
-
-.btn-cerrar {
-    background: #EAEAEA;
-    border: none;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    font-size: 1.2rem;
-    cursor: pointer;
-}
-
-/* Ocultar vistas */
-.vista-oculta { display: none; }
+.vista-oculta { display: none !important; }
 .vista-activa { display: block; }
+.grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-/* Nuevas adiciones para Core Engine V2 */
-.grid-2-col {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 15px;
+.item-lista-pdf { 
+    padding: 15px 10px; border-bottom: 1px solid #EAEAEA; display: flex; 
+    justify-content: space-between; align-items: center; background: white; 
+    margin-bottom: 8px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
 }
-
-.seccion-titulo {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.1rem;
-    border-bottom: 1px solid #EAEAEA;
-    padding-bottom: 5px;
-    margin-bottom: 10px;
-}
-
-.badge-fase {
-    background: #2D2D2D;
-    color: white;
-    padding: 3px 8px;
-    border-radius: 8px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-.tarjeta-resumen {
-    background: rgba(192, 87, 70, 0.05); /* Terracota muy sutil */
-    border: 1px solid rgba(192, 87, 70, 0.1);
-    padding: 15px 24px;
-}
-
-.texto-pequeno {
-    font-size: 0.85rem;
-    color: var(--texto-secundario);
-    line-height: 1.4;
-    margin-top: 5px;
-}
-
-.modulo-extra {
-    background: #F8F9FA;
-    padding: 12px;
-    border-radius: 10px;
-    font-size: 0.85rem;
-    border-left: 3px solid #34495e;
-}
-
-.alerta-roja {
-    border-left-color: #e74c3c;
-    background: #FDEDEC;
-    color: #c0392b;
-}
-
-.mb-3 { margin-bottom: 15px; }
