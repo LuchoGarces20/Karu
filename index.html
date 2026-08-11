@@ -3,143 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RunFlow | Core Engine V4</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+    <title>Stridia | Premium AI Coach</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
-<body>
+<body data-theme="dark">
 
-<main class="app-container">
-    <div class="lang-switcher">
-        <button onclick="cambiarIdioma('pt')" id="btn-lang-pt" class="lang-activa">PT</button>
-        <button onclick="cambiarIdioma('es')" id="btn-lang-es">ES</button>
-        <button onclick="cambiarIdioma('en')" id="btn-lang-en">EN</button>
+<div class="app-container">
+    <header>
+        <div class="brand-logo">
+            <div class="brand-icon">S</div>
+            <div class="brand-text">STRIDIA</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-icon" id="btn-config" onclick="abrirConfig()" aria-label="Editar Perfil" style="display:none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </button>
+            <button class="btn-icon" id="theme-toggle" aria-label="Alternar Tema">
+                <svg class="icon-sun" width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <svg class="icon-moon" width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="nav-tabs" id="nav-tabs">
+        <button class="tab-btn active" id="tab-today" onclick="switchTab('screen-today', 'tab-today')">Hoje</button>
+        <button class="tab-btn" id="tab-dashboard" onclick="switchTab('screen-dashboard', 'tab-dashboard')">Performance</button>
     </div>
 
-    <section id="vista-onboarding" class="vista-activa">
-        <header class="header-onboarding mt-4">
-            <h1 class="titulo-principal" data-i18n="tituloApp">Calibração do Motor</h1>
-            <p class="subtitulo" data-i18n="subtituloApp">Insira suas métricas base para gerar o macrociclo.</p>
-        </header>
-
-        <div class="tarjeta-bento">
-            <h3 class="seccion-titulo" data-i18n="logisticaMeta">1. Logística e Meta</h3>
-            <label class="label-tecnico mt-3" data-i18n="dataCorrida">DATA DA CORRIDA</label>
-            <input type="date" id="input-fecha" class="input-moderno" value="2026-05-31">
-
-            <div class="grid-2-col mt-3">
-                <div>
-                    <label class="label-tecnico" data-i18n="distancia">DISTÂNCIA</label>
-                    <select id="input-distancia" class="input-moderno">
-                        <option value="5">5K</option>
-                        <option value="10" selected>10K</option>
-                        <option value="21">HM (21K)</option>
-                        <option value="42">Maratón</option>
+    <!-- TELA 1: ONBOARDING -->
+    <div id="screen-setup" class="screen">
+        <div class="card">
+            <h2>Calibração Fisiológica</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 0.9rem;">Construa sua base de dados esportiva para a inteligência de carga ACWR e projeção percentual.</p>
+            
+            <form id="form-setup" class="form-grid">
+                <div class="form-group full-width">
+                    <label>Seu Nome</label>
+                    <input type="text" id="setup-nome" value="Atleta" required placeholder="Como devo te chamar?">
+                </div>
+                <div class="form-group">
+                    <label>Idade (anos)</label>
+                    <input type="number" id="setup-idade" value="30" required>
+                </div>
+                <div class="form-group">
+                    <label>Gênero (Cálculo Fisiológico)</label>
+                    <select id="setup-genero">
+                        <option value="M">Masculino</option>
+                        <option value="F">Feminino</option>
                     </select>
                 </div>
-                <div>
-                    <label class="label-tecnico" data-i18n="diasSemana">DIAS / SEMANA</label>
-                    <select id="input-dias" class="input-moderno">
-                        <option value="3" data-i18n="dias3">3 Dias</option>
-                        <option value="4" selected data-i18n="dias4">4 Dias</option>
-                        <option value="5" data-i18n="dias5">5 Dias</option>
+                
+                <div class="form-group full-width">
+                    <label class="section-title-highlight">❤️ Zonas Cardíacas</label>
+                </div>
+                <div class="form-group">
+                    <label>FC Repouso (bpm)</label>
+                    <input type="number" id="setup-fc-repouso" value="60" required>
+                </div>
+                <div class="form-group">
+                    <label>FC Máxima (bpm) <span style="text-transform: none; font-weight: normal;">- Opcional</span></label>
+                    <input type="number" id="setup-fc-max" placeholder="Auto (Tanaka)">
+                </div>
+
+                <div class="form-group full-width">
+                    <label class="section-title-highlight">📅 Agenda Semanal</label>
+                    <label style="color: var(--text-secondary); text-transform: none; font-weight: 500;">Quais dias você prefere treinar? (Mínimo 2 dias)</label>
+                    <div class="days-grid">
+                        <input type="checkbox" name="setup-dias" value="1" id="d-seg" class="day-checkbox"> <label class="day-label" for="d-seg">Seg</label>
+                        <input type="checkbox" name="setup-dias" value="2" id="d-ter" class="day-checkbox" checked> <label class="day-label" for="d-ter">Ter</label>
+                        <input type="checkbox" name="setup-dias" value="3" id="d-qua" class="day-checkbox"> <label class="day-label" for="d-qua">Qua</label>
+                        <input type="checkbox" name="setup-dias" value="4" id="d-qui" class="day-checkbox" checked> <label class="day-label" for="d-qui">Qui</label>
+                        <input type="checkbox" name="setup-dias" value="5" id="d-sex" class="day-checkbox"> <label class="day-label" for="d-sex">Sex</label>
+                        <input type="checkbox" name="setup-dias" value="6" id="d-sab" class="day-checkbox"> <label class="day-label" for="d-sab">Sáb</label>
+                        <input type="checkbox" name="setup-dias" value="0" id="d-dom" class="day-checkbox" checked> <label class="day-label" for="d-dom">Dom</label>
+                    </div>
+                </div>
+                
+                <div class="form-group full-width">
+                    <label class="section-title-highlight">📍 Baseline de Fitness (Nível Atual)</label>
+                </div>
+                <div class="form-group full-width">
+                    <label>Volume Semanal Atual (km)</label>
+                    <input type="number" step="0.1" id="setup-vol-semanal" value="20" required placeholder="Soma de km da sua semana">
+                </div>
+                <div class="form-group">
+                    <label>Maior Corrida (km)</label>
+                    <input type="number" step="0.1" id="setup-dist-atual" value="10" required>
+                </div>
+                <div class="form-group">
+                    <label>Tempo Maior Corrida (min)</label>
+                    <input type="number" id="setup-tempo-atual" value="65" required>
+                </div>
+
+                <div class="divider full-width"></div>
+
+                <div class="form-group full-width">
+                    <label class="section-title-highlight">🏁 O Grande Objetivo</label>
+                </div>
+                <div class="form-group">
+                    <label>Distância Alvo</label>
+                    <select id="setup-dist-alvo">
+                        <option value="5">5k - Velocidade</option>
+                        <option value="10">10k - Resistência</option>
+                        <option value="21.1" selected>21.1k - Meia Maratona</option>
+                        <option value="42.2">42.2k - Maratona</option>
                     </select>
                 </div>
-            </div>
-
-            <h3 class="seccion-titulo mt-4" data-i18n="estadoAtual">2. Estado Físico Atual</h3>
-            <label class="label-tecnico" data-i18n="volumenSemanal">VOLUMEN SEMANAL ATUAL (KM)</label>
-            <input type="number" id="input-volumen" class="input-moderno" value="15" min="0">
-
-            <label class="label-tecnico mt-3" data-i18n="diaLongo">DIA PREFERIDO TIRADA LONGA</label>
-            <select id="input-dialargo" class="input-moderno">
-                <option value="0" selected data-i18n="domingo">Domingo</option>
-                <option value="6" data-i18n="sabado">Sábado</option>
-            </select>
-        </div>
-
-        <button id="btn-gerar-plano" class="btn-primario mt-4" data-i18n="btnCompilar">Compilar Plano de Treinamento →</button>
-    </section>
-
-    <section id="vista-entreno" class="vista-oculta">
-        
-        <div class="progreso-header flex-between mt-4">
-            <div>
-                <span class="label-tecnico"><span data-i18n="semana">SEMANA</span> <span id="semana-actual"></span> / <span id="semana-total"></span></span>
-            </div>
-            <div>
-                <span class="badge-fase" id="fase-actual">Fase Base</span>
-            </div>
-        </div>
-        <div class="barra-fondo"><div class="barra-llena" id="barra-progreso" style="width: 0%;"></div></div>
-
-        <div class="tarjeta-bento tarjeta-resumen mb-3 mt-3">
-            <h4 class="label-tecnico text-terracota" data-i18n="focusSemana">FOCUS DA SEMANA</h4>
-            <p id="resumen-ejecutivo" class="texto-pequeno">Carregando...</p>
-        </div>
-
-        <div class="tarjeta-bento tarjeta-entreno" id="bento-hoy">
-            <div class="label-tecnico" id="fecha-hoy">Carregando...</div>
-            <h2 class="tipo-entrenamiento mt-1" id="tipo-entreno">Carregando...</h2>
-            
-            <div class="gran-metrica" id="metrica-entreno">- <span class="unidad">MIN</span></div>
-            
-            <div class="detalle-tecnico" id="detalle-entreno">...</div>
-            
-            <div id="modulo-extra" class="modulo-extra mt-3 vista-oculta"></div>
-        </div>
-
-        <div class="tarjeta-bento tarjeta-feedback mt-3" id="seccion-feedback">
-            <button id="btn-abrir-feedback" class="btn-secundario" data-i18n="btnRegistrar">Registrar Treino Executado</button>
-            
-            <div id="panel-rpe" class="vista-oculta mt-3">
-                <div class="grid-2-col">
-                    <div>
-                        <label class="label-tecnico" data-i18n="distReal">DISTÂNCIA REAL (KM)</label>
-                        <input type="number" id="input-dist-real" class="input-moderno" step="0.1" placeholder="Ex: 5.2">
-                    </div>
-                    <div>
-                        <label class="label-tecnico" data-i18n="tempoReal">TEMPO REAL (MIN)</label>
-                        <input type="number" id="input-tempo-real" class="input-moderno" placeholder="Ex: 45">
-                    </div>
+                <div class="form-group">
+                    <label>Data da Prova</label>
+                    <input type="date" id="setup-data-alvo" required>
                 </div>
 
-                <label class="label-tecnico mt-3" data-i18n="rpe">ESFORÇO PERCEBIDO (RPE 1-10)</label>
-                <input type="range" min="1" max="10" value="5" class="slider-rpe" id="input-rpe">
-                <div class="rpe-display text-ambar"><span id="valor-rpe">5</span></div>
+                <div class="form-group full-width" style="margin-top: 16px;">
+                    <button type="submit" class="btn-primary">Iniciar Motor de Treino</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-                <button id="btn-processar-feedback" class="btn-primario mt-4 py-2" data-i18n="btnProcessar">Processar Carga Interna</button>
+    <!-- TELA 2: TREINO DO DIA -->
+    <div id="screen-today" class="screen">
+        <div class="today-wrapper" id="ui-hoje"></div>
+    </div>
+
+    <!-- TELA 3: DASHBOARD -->
+    <div id="screen-dashboard" class="screen">
+        <div class="card">
+            <h2>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                Modelo de Carga (TSS)
+            </h2>
+            <div class="metrics-grid">
+                <div class="metric-box"><div class="metric-value" id="val-ctl">--</div><div class="metric-label">Fitness<br><span style="font-size:9px; font-weight:normal;">(CTL)</span></div></div>
+                <div class="metric-box"><div class="metric-value" id="val-atl">--</div><div class="metric-label">Fadiga<br><span style="font-size:9px; font-weight:normal;">(ATL)</span></div></div>
+                <div class="metric-box"><div class="metric-value" id="val-acwr">--</div><div class="metric-label">ACWR<br><span id="label-acwr" style="font-size:9px; font-weight:normal;">(Razão)</span></div></div>
+                <div class="metric-box"><div class="metric-value" id="val-tsb">--</div><div class="metric-label">Forma<br><span style="font-size:9px; font-weight:normal;">(TSB)</span></div></div>
             </div>
         </div>
 
-        <nav class="navegacion-pildoras mt-4">
-            <button id="btn-nav-ayer" class="btn-pildora" data-i18n="navOntem">← Ontem</button>
-            <button id="btn-nav-hoy" class="btn-pildora pill-activa" data-i18n="navHoje">Hoje</button>
-            <button id="btn-nav-manana" class="btn-pildora" data-i18n="navAmanha">Amanhã →</button>
-        </nav>
-        
-        <button id="btn-toggle-cajon" class="btn-fantasma mt-4" data-i18n="btnVerCiclo">Ver Macrociclo Completo ⬆</button>
-    </section>
-
-    <aside id="cajon-historial" class="cajon-oculto">
-        <div class="cajon-header flex-between">
-            <h3 class="titulo-cajon" data-i18n="tituloCiclo">Macrociclo VDOT</h3>
-            <button id="btn-cerrar-cajon" class="btn-cerrar">✕</button>
+        <div class="card" style="margin-top: 20px;">
+            <h2>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                Forecast Semanal
+            </h2>
+            <div class="calendar-week" id="ui-calendario"></div>
+            <button class="btn-secondary" onclick="abrirPlanoCompleto()">Ver Plano Completo (Macrociclo)</button>
         </div>
-        
-        <button id="btn-exportar-pdf" class="btn-secundario mb-3" data-i18n="btnExportar">📄 Exportar Plano (PDF)</button>
-        
-        <div id="area-exportacao-pdf">
-            <div class="lista-dias" id="contenedor-lista-plan"></div>
-        </div>
-        
-        <button id="btn-reset-motor" class="btn-peligro mt-4" data-i18n="btnResetar">Resetar Motor</button>
-    </aside>
 
-</main>
+        <div class="card" style="margin-top: 20px;">
+            <h2>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>
+                Processamento AI
+            </h2>
+            <div id="feed-relatorios" style="padding-top: 10px;"></div>
+        </div>
+
+        <button class="btn-reset-safe" onclick="resetarApp()">Zerar Motor (Resetar Dados)</button>
+    </div>
+
+</div>
+
+<!-- MODAIS -->
+<div class="modal-overlay" id="modal-treino" onclick="fecharModaisFora(event, 'modal-treino')">
+    <div class="card modal-card" id="card-treino" onclick="event.stopPropagation()">
+        <div style="width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 0 auto 16px auto;"></div>
+        
+        <h2>Registrar Treino</h2>
+        <form id="form-treino" class="form-grid">
+            <input type="hidden" id="treino-id">
+            <input type="hidden" id="input-tipo">
+            
+            <div class="form-group">
+                <label>Distância Real (km)</label>
+                <input type="number" step="0.1" id="input-dist" required>
+            </div>
+            <div class="form-group">
+                <label>Tempo Total (min)</label>
+                <input type="number" id="input-tempo" placeholder="Ex: 45" required>
+            </div>
+            <div class="form-group full-width">
+                <label>FC Média (bpm) <span style="text-transform: none; font-weight: normal;">- Opcional</span></label>
+                <input type="number" id="input-fc" placeholder="Deixe em branco p/ usar sRPE"> 
+            </div>
+            
+            <div class="form-group full-width">
+                <label>Percepção de Esforço (sRPE 1-10)</label>
+                <select id="input-rpe">
+                    <option value="2">2 - Muito Leve (Z1)</option>
+                    <option value="4">4 - Leve (Z2)</option>
+                    <option value="6" selected>6 - Moderado (Z3)</option>
+                    <option value="8">8 - Difícil (Z4)</option>
+                    <option value="9">9 - Muito Difícil (Z5)</option>
+                    <option value="10">10 - Esforço Máximo</option>
+                </select>
+            </div>
+
+            <div class="form-group full-width" style="margin-top: 10px;">
+                <button type="submit" class="btn-primary">Salvar Sessão</button>
+                <button type="button" class="btn-reset" style="width: 100%; margin-top: 10px; padding: 12px;" onclick="fecharModal('modal-treino')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-plano" onclick="fecharModaisFora(event, 'modal-plano')">
+    <div class="card modal-card" id="card-plano" onclick="event.stopPropagation()">
+        <div style="width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 0 auto 16px auto;"></div>
+        
+        <h2>Macrociclo de Treino</h2>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px;">Ciclos adaptativos gerados baseados em % do seu limiar.</p>
+        
+        <div id="container-plano-completo"></div>
+
+        <button type="button" class="btn-reset" style="width: 100%; margin-top: 16px; padding: 14px;" onclick="fecharModal('modal-plano')">Fechar Visualização</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-config" onclick="fecharModaisFora(event, 'modal-config')">
+    <div class="card modal-card" id="card-config" onclick="event.stopPropagation()">
+        <div style="width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 0 auto 16px auto;"></div>
+        
+        <h2>Editar Perfil</h2>
+        <form id="form-config" class="form-grid">
+            <div class="form-group full-width">
+                <label>Gênero</label>
+                <select id="config-genero">
+                    <option value="M">Masculino</option>
+                    <option value="F">Feminino</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>FC Repouso (bpm)</label>
+                <input type="number" id="config-fc-repouso" required>
+            </div>
+            <div class="form-group">
+                <label>FC Máxima (bpm)</label>
+                <input type="number" id="config-fc-max" required>
+            </div>
+            <div class="form-group full-width">
+                <label>Pace de Limiar (seg/km)</label>
+                <input type="number" id="config-pace-base" required>
+            </div>
+
+            <div class="form-group full-width" style="margin-top: 10px;">
+                <button type="submit" class="btn-primary">Atualizar Parâmetros</button>
+                <button type="button" class="btn-reset" style="width: 100%; margin-top: 10px; padding: 12px;" onclick="fecharModal('modal-config')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>

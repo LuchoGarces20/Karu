@@ -1,408 +1,524 @@
-/**
- * RUNFLOW | CORE ENGINE V4
- * - Arquitectura inmutable
- * - Internacionalización (i18n)
- * - Control de Calidad de Inputs (Validación)
- */
+const themeToggleBtn = document.getElementById('theme-toggle');
+const body = document.body;
 
-// ==========================================
-// 1. DICCIONARIO I18N
-// ==========================================
-const i18n = {
-    pt: {
-        tituloApp: "Calibração do Motor", subtituloApp: "Insira suas métricas base para gerar o macrociclo.",
-        logisticaMeta: "1. Logística e Meta", dataCorrida: "DATA DA CORRIDA", distancia: "DISTÂNCIA",
-        diasSemana: "DIAS / SEMANA", dias3: "3 Dias", dias4: "4 Dias", dias5: "5 Dias",
-        estadoAtual: "2. Estado Físico Atual", volumenSemanal: "VOLUMEN SEMANAL ATUAL (KM)",
-        diaLongo: "DIA PREFERIDO TIRADA LONGA", domingo: "Domingo", sabado: "Sábado",
-        btnCompilar: "Compilar Plano de Treinamento →", semana: "SEMANA", focusSemana: "FOCUS DA SEMANA",
-        btnRegistrar: "Registrar Treino Executado", distReal: "DISTÂNCIA REAL (KM)", tempoReal: "TEMPO REAL (MIN)",
-        rpe: "ESFORÇO PERCEBIDO (RPE 1-10)", btnProcessar: "Processar Carga Interna",
-        navOntem: "← Ontem", navHoje: "Hoje", navAmanha: "Amanhã →", btnVerCiclo: "Ver Macrociclo Completo ⬆",
-        tituloCiclo: "Macrociclo VDOT", btnExportar: "📄 Exportar Plano (PDF)", btnResetar: "Resetar Motor",
-        erroValidacao: "Erro de Controle de Qualidade: Distância e Tempo devem ser maiores que zero para calcular a carga.",
-        faltaDados: "Faltam dados críticos para compilação.",
-        descansoTipo: "Descanso / Recuperação", descansoDetalle: "Dia livre. Se fizer atividade, cross-training Z1.",
-        taperFase: "Redução drástica de volume para supercompensação.", peakFase: "Especificidade. Treinos ao ritmo alvo (VDOT).",
-        buildFase: "Aumento do limiar de lactato e VO2Max.", baseFase: "Construção do motor aeróbico. Regra 80/20 em Z2."
-    },
-    es: {
-        tituloApp: "Calibración del Motor", subtituloApp: "Ingresa tus métricas base para generar el macrociclo.",
-        logisticaMeta: "1. Logística y Meta", dataCorrida: "FECHA DE LA CARRERA", distancia: "DISTANCIA",
-        diasSemana: "DÍAS / SEMANA", dias3: "3 Días", dias4: "4 Días", dias5: "5 Días",
-        estadoAtual: "2. Estado Físico Actual", volumenSemanal: "VOLUMEN SEMANAL ACTUAL (KM)",
-        diaLongo: "DÍA PREFERIDO TIRADA LARGA", domingo: "Domingo", sabado: "Sábado",
-        btnCompilar: "Compilar Plan de Entrenamiento →", semana: "SEMANA", focusSemana: "ENFOQUE SEMANAL",
-        btnRegistrar: "Registrar Entrenamiento Ejecutado", distReal: "DISTANCIA REAL (KM)", tempoReal: "TIEMPO REAL (MIN)",
-        rpe: "ESFUERZO PERCIBIDO (RPE 1-10)", btnProcessar: "Procesar Carga Interna",
-        navOntem: "← Ayer", navHoje: "Hoy", navAmanha: "Mañana →", btnVerCiclo: "Ver Macrociclo Completo ⬆",
-        tituloCiclo: "Macrociclo VDOT", btnExportar: "📄 Exportar Plan (PDF)", btnResetar: "Resetear Motor",
-        erroValidacao: "Error de Control de Calidad: La distancia y el tiempo deben ser mayores a cero.",
-        faltaDados: "Faltan datos críticos para la compilación.",
-        descansoTipo: "Descanso / Recuperación", descansoDetalle: "Día libre. Si haces actividad, cross-training Z1.",
-        taperFase: "Reducción drástica de volumen para supercompensación.", peakFase: "Especificidad. Entrenamientos a ritmo objetivo.",
-        buildFase: "Aumento del umbral de lactato y VO2Max.", baseFase: "Construcción del motor aeróbico. Regla 80/20 estricta."
-    },
-    en: {
-        tituloApp: "Engine Calibration", subtituloApp: "Enter your baseline metrics to generate the macrocycle.",
-        logisticaMeta: "1. Logistics & Goal", dataCorrida: "RACE DATE", distancia: "DISTANCE",
-        diasSemana: "DAYS / WEEK", dias3: "3 Days", dias4: "4 Days", dias5: "5 Days",
-        estadoAtual: "2. Current Fitness", volumenSemanal: "CURRENT WEEKLY VOLUME (KM)",
-        diaLongo: "PREFERRED LONG RUN DAY", domingo: "Sunday", sabado: "Saturday",
-        btnCompilar: "Compile Training Plan →", semana: "WEEK", focusSemana: "WEEKLY FOCUS",
-        btnRegistrar: "Log Completed Workout", distReal: "ACTUAL DISTANCE (KM)", tempoReal: "ACTUAL TIME (MIN)",
-        rpe: "PERCEIVED EXERTION (RPE 1-10)", btnProcessar: "Process Internal Load",
-        navOntem: "← Yesterday", navHoje: "Today", navAmanha: "Tomorrow →", btnVerCiclo: "View Full Macrocycle ⬆",
-        tituloCiclo: "VDOT Macrocycle", btnExportar: "📄 Export Plan (PDF)", btnResetar: "Reset Engine",
-        erroValidacao: "Quality Control Error: Distance and Time must be greater than zero to calculate load.",
-        faltaDados: "Critical data missing for compilation.",
-        descansoTipo: "Rest / Recovery", descansoDetalle: "Rest day. If active, Z1 cross-training only.",
-        taperFase: "Drastic volume reduction for supercompensation.", peakFase: "Race specificity. VDOT target pace workouts.",
-        buildFase: "Lactate threshold and VO2Max increase.", baseFase: "Aerobic engine building. Strict 80/20 in Z2."
-    }
-};
-
-// ==========================================
-// 2. ESTADO GLOBAL (STATE MANAGEMENT)
-// ==========================================
-const appState = {
-    lang: 'pt',
-    fechaVisualizada: new Date(),
-    motorData: { meta: null, planoOriginal: [], planoVigente: [] }
-};
-appState.fechaVisualizada.setHours(0, 0, 0, 0);
-
-function cambiarIdioma(lang) {
-    appState.lang = lang;
-    document.querySelectorAll('.lang-switcher button').forEach(btn => btn.classList.remove('lang-activa'));
-    document.getElementById(`btn-lang-${lang}`).classList.add('lang-activa');
-    
-    // Actualizar DOM estático
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (i18n[lang][key]) {
-            if (el.tagName === 'INPUT' && el.type === 'placeholder') el.placeholder = i18n[lang][key];
-            else el.innerText = i18n[lang][key];
-        }
-    });
-
-    if (appState.motorData.planoVigente.length > 0) renderizarVistaDiaria();
+function applyTheme(themeName) {
+    body.setAttribute('data-theme', themeName);
+    localStorage.setItem('stridia_theme', themeName);
 }
+const savedTheme = localStorage.getItem('stridia_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+applyTheme(savedTheme);
 
-const formatarDataLocal = (dataObj) => {
-    const ano = dataObj.getFullYear();
-    const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
-    const dia = String(dataObj.getDate()).padStart(2, '0');
-    return `${ano}-${mes}-${dia}`;
-};
+themeToggleBtn.addEventListener('click', () => {
+    applyTheme(body.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+});
 
-// ==========================================
-// 3. MOTOR DE CÁLCULO (MACROCICLO)
-// ==========================================
-function compilarPlanoDeTreinamento(fechaFinStr, diasPorSemana, distObj, volActual, diaLargo) {
-    const planoGerado = [];
-    const t = i18n[appState.lang]; // Referencia rápida al diccionario
-    
-    const partesFechaFin = fechaFinStr.split('-');
-    const fechaCarrera = new Date(partesFechaFin[0], partesFechaFin[1] - 1, partesFechaFin[2]);
-    fechaCarrera.setHours(0,0,0,0);
+const STORAGE_KEY = 'stridia_app_v2';
 
-    let fechaIteradora = new Date();
-    fechaIteradora.setHours(0, 0, 0, 0);
-
-    const milisegundosPorSemana = 1000 * 3600 * 24 * 7;
-    const semanasTotales = Math.max(1, Math.ceil((fechaCarrera.getTime() - fechaIteradora.getTime()) / milisegundosPorSemana));
-
-    let volumenSemanalBase = parseFloat(volActual);
-    const distancia = parseInt(distObj);
-    let tiradaLargaActual = volumenSemanalBase * 0.3;
-
-    while (fechaIteradora <= fechaCarrera) {
-        const diasFaltantes = (fechaCarrera.getTime() - fechaIteradora.getTime()) / (1000 * 3600 * 24);
-        const semanasFaltantes = Math.ceil(diasFaltantes / 7);
-        const semanaNum = semanasTotales - semanasFaltantes + 1;
-
-        let fase = ""; let resumenEjecutivo = "";
-        
-        if (semanasFaltantes <= (distancia >= 21 ? 2 : 1)) {
-            fase = "Taper Phase"; resumenEjecutivo = t.taperFase;
-        } else if (semanasFaltantes <= 4) {
-            fase = "Peak Phase"; resumenEjecutivo = t.peakFase;
-        } else if (semanasFaltantes <= semanasTotales * 0.6) {
-            fase = "Build Phase"; resumenEjecutivo = t.buildFase;
-        } else {
-            fase = "Base Phase"; resumenEjecutivo = t.baseFase;
+class RunningCoach {
+    constructor() { 
+        this.state = this.loadState(); 
+        if (this.state) {
+            this.recalcularLinhaDoTempo();
         }
+    }
 
-        let isDeload = (semanaNum % 4 === 0 && fase !== "Taper Phase");
-        let factorVolumen = isDeload ? 0.75 : 1.0; 
-        let volSemanaActual = (volumenSemanalBase + (semanaNum * 1.5)) * factorVolumen;
-        let kmTiradaLarga = (tiradaLargaActual + (semanaNum * 0.8)) * factorVolumen;
-
-        if (fase === "Taper Phase") {
-            volSemanaActual *= (distancia >= 21 && semanasFaltantes == 2) ? 0.6 : 0.4;
-            kmTiradaLarga = distancia * 0.3;
+    loadState() {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) {
+            console.error("Erro ao ler LocalStorage", e);
+            return null;
         }
+    }
 
-        const diaSemana = fechaIteradora.getDay();
-        const fechaFormateada = formatarDataLocal(fechaIteradora);
+    saveState() { 
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state)); 
+    }
+
+    recalcularLinhaDoTempo() {
+        if (!this.state || !this.state.atleta || !this.state.atleta.dataInicioISO) return;
         
-        let entrenoDia = {
-            id: fechaFormateada, fecha: fechaFormateada, semana: semanaNum, semanaTotal: semanasTotales,
-            fase: fase, resumen: resumenEjecutivo,
-            tipo: t.descansoTipo, metricaBase: "0", unidad: "KM", detalle: t.descansoDetalle,
-            colorTema: "#95a5a6", extraHTML: "", status: "pendente", 
-            dadosExecucao: { distReal: 0, tempoReal: 0, rpe: 0, cargaInterna: 0 }, flagAjuste: false
+        const dataInicial = new Date(this.state.atleta.dataInicioISO + "T00:00:00");
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        
+        let ctlAtual = this.state.atleta.ctlInicial;
+        let atlAtual = this.state.atleta.ctlInicial * 1.2;
+        
+        const tauCTL = 42;
+        const tauATL = 7;
+        const alphaCTL = 1 - Math.exp(-1 / tauCTL); 
+        const alphaATL = 1 - Math.exp(-1 / tauATL);
+        
+        const diasTotais = Math.floor((hoje - dataInicial) / (1000 * 60 * 60 * 24));
+        
+        this.state.atleta.historicoCTL = [];
+        
+        for(let i = 0; i <= diasTotais; i++) {
+            let dataIteracao = new Date(dataInicial);
+            dataIteracao.setDate(dataInicial.getDate() + i);
+            const dataIsoStr = dataIteracao.toISOString().split('T')[0];
+            
+            ctlAtual = ctlAtual * Math.exp(-1 / tauCTL);
+            atlAtual = atlAtual * Math.exp(-1 / tauATL);
+            
+            const treinosDoDia = this.state.treinosRealizados.filter(t => t.dataISO === dataIsoStr);
+            let tssDia = 0;
+            treinosDoDia.forEach(t => tssDia += t.tss);
+            
+            if(tssDia > 0) {
+                ctlAtual += (tssDia * alphaCTL);
+                atlAtual += (tssDia * alphaATL);
+            }
+            
+            this.state.atleta.historicoCTL.push({ dataISO: dataIsoStr, ctl: ctlAtual, atl: atlAtual });
+        }
+        
+        this.state.atleta.ctl = ctlAtual;
+        this.state.atleta.atl = atlAtual;
+        this.state.atleta.tsb = ctlAtual - atlAtual;
+        this.state.atleta.ultimaAtualizacaoISO = hoje.toISOString().split('T')[0];
+        
+        this.saveState();
+    }
+
+    initSetup(dadosForm) {
+        const fcMaxDigitada = parseInt(dadosForm.fcMax);
+        const fcMaxCalc = (!isNaN(fcMaxDigitada) && fcMaxDigitada > 0) ? fcMaxDigitada : Math.round(208 - 0.7 * dadosForm.idade);
+        
+        const distAtualSegura = Math.max(1, dadosForm.distAtual);
+        const tempoAtualSeguro = Math.max(1, dadosForm.tempoAtual);
+        const paceAtualSegundos = Math.round((tempoAtualSeguro / distAtualSegura) * 60); 
+        
+        const volSemanal = Math.max(distAtualSegura, dadosForm.volSemanal);
+
+        const tempoSemanalHoras = (volSemanal * (paceAtualSegundos / 60)) / 60;
+        const tssSemanal = tempoSemanalHoras * Math.pow(0.75, 2) * 100;
+        const ctlInicial = tssSemanal / 7; 
+
+        let dias = dadosForm.diasSelecionados;
+        dias.sort((a,b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b)); 
+        
+        const dayLongao = dias[dias.length - 1]; 
+        let dayTempo = dias[0]; 
+        if(dias.length >= 3) {
+            dayTempo = dias[Math.floor((dias.length - 1) / 2)];
+        }
+        
+        const diasRegen = dias.filter(d => d !== dayLongao && d !== dayTempo);
+        const dataHojeISO = new Date().toISOString().split('T')[0];
+
+        this.state = {
+            atleta: {
+                nome: dadosForm.nome, idade: dadosForm.idade, genero: dadosForm.genero,
+                fcMax: fcMaxCalc, fcRepouso: dadosForm.fcRepouso, 
+                paceBaseSegundos: paceAtualSegundos, 
+                distanciaAtualMax: distAtualSegura,
+                volumeSemanalBase: volSemanal, 
+                dataInicioISO: dataHojeISO,
+                ctlInicial: ctlInicial,
+                ctl: ctlInicial, atl: ctlInicial * 1.2, tsb: ctlInicial - (ctlInicial * 1.2),
+                multiplicadorVolume: 1.0, 
+                historicoCTL: [],
+                ultimaAtualizacaoISO: dataHojeISO,
+                diasTreino: { longao: dayLongao, tempo: dayTempo, regen: diasRegen }
+            },
+            prova: { distancia: dadosForm.distAlvo, dataStr: dadosForm.dataAlvo },
+            plano: [], treinosRealizados: [], logs: []
         };
 
-        if (diaSemana == diaLargo) { 
-            entrenoDia.tipo = "Long Run"; entrenoDia.metricaBase = kmTiradaLarga.toFixed(1);
-            entrenoDia.colorTema = "#8e44ad"; entrenoDia.detalle = "Z2 (conversacional).";
-        } else if (diaSemana === (diaLargo == 0 ? 3 : 2)) { 
-            entrenoDia.tipo = "VO2 Max / Quality"; entrenoDia.metricaBase = "45"; entrenoDia.unidad = "MIN";
-            entrenoDia.colorTema = "#e74c3c"; entrenoDia.detalle = "Warmup + Z4 Intervals + Cooldown.";
-        } else if (diaSemana === (diaLargo == 0 ? 5 : 4) && diasPorSemana >= 3) { 
-            entrenoDia.tipo = "Aerobic Z2"; entrenoDia.metricaBase = (volSemanaActual * 0.25).toFixed(1); entrenoDia.unidad = "KM";
-            entrenoDia.colorTema = "#2980b9"; entrenoDia.detalle = "Engine maintenance. Keep RPE < 4/10.";
-        } else if (diaSemana === (diaLargo == 0 ? 1 : 0) && diasPorSemana >= 4) { 
-            entrenoDia.tipo = "Recovery + Strength"; entrenoDia.metricaBase = "30"; entrenoDia.unidad = "MIN";
-            entrenoDia.colorTema = "#27ae60"; entrenoDia.detalle = "Light jog.";
-            entrenoDia.extraHTML = `<strong>Strength Module:</strong><br>3x Bulgarian Split Squat (x8), RDL (x10), Plank (30s).`;
-        }
-
-        if (isDeload) entrenoDia.tipo += " [DELOAD]";
-
-        if (fechaIteradora.getTime() === fechaCarrera.getTime()) {
-            entrenoDia.tipo = `RACE DAY: ${distancia}K`; entrenoDia.metricaBase = distancia; entrenoDia.unidad = "KM";
-            entrenoDia.detalle = "Execution day. Trust the process."; entrenoDia.colorTema = "#F5A623";
-        }
-
-        planoGerado.push(entrenoDia);
-        fechaIteradora.setDate(fechaIteradora.getDate() + 1);
+        this.state.logs.push({ data: new Date().toLocaleDateString('pt-BR'), msg: `Configuração concluída. Fisiologia e baseline de carga adaptadas usando Volume Semanal.` });
+        this.gerarPlanoTreino();
+        this.recalcularLinhaDoTempo();
     }
-    return planoGerado;
-}
 
-// ==========================================
-// 4. CONTROLADORES UI Y VALIDACIÓN (QA)
-// ==========================================
-function inicializarApp() {
-    vincularEventos();
-    cambiarIdioma('pt'); // Default
-    const dadosSalvos = localStorage.getItem('runflow_db');
-    if (dadosSalvos) {
-        appState.motorData = JSON.parse(dadosSalvos);
-        alternarVistas('vista-entreno');
-        renderizarVistaDiaria();
-    } else { alternarVistas('vista-onboarding'); }
-}
-
-function alternarVistas(vistaId) {
-    document.getElementById('vista-onboarding').classList.add('vista-oculta');
-    document.getElementById('vista-entreno').classList.add('vista-oculta');
-    document.getElementById(vistaId).classList.remove('vista-oculta');
-}
-
-function guardarPerfil() {
-    const fecha = document.getElementById('input-fecha').value;
-    const dist = document.getElementById('input-distancia').value;
-    const dias = parseInt(document.getElementById('input-dias').value);
-    const vol = document.getElementById('input-volumen').value;
-    const diaLargo = parseInt(document.getElementById('input-dialargo').value);
-
-    if (!fecha || vol === "") return alert(i18n[appState.lang].faltaDados);
-
-    const arrayPlano = compilarPlanoDeTreinamento(fecha, dias, dist, vol, diaLargo);
-    
-    appState.motorData.meta = { dataCriacao: formatarDataLocal(new Date()), corridaAlvo: fecha };
-    appState.motorData.planoOriginal = JSON.parse(JSON.stringify(arrayPlano));
-    appState.motorData.planoVigente = JSON.parse(JSON.stringify(arrayPlano));
-
-    localStorage.setItem('runflow_db', JSON.stringify(appState.motorData));
-    alternarVistas('vista-entreno');
-    renderizarVistaDiaria();
-}
-
-function renderizarVistaDiaria() {
-    const bd = appState.motorData.planoVigente;
-    const fechaStr = formatarDataLocal(appState.fechaVisualizada);
-    const entreno = bd.find(e => e.id === fechaStr);
-
-    const opcoesFecha = { weekday: 'long', day: 'numeric', month: 'short' };
-    const localeMap = { pt: 'pt-BR', es: 'es-ES', en: 'en-US' };
-    document.getElementById('fecha-hoy').innerText = appState.fechaVisualizada.toLocaleDateString(localeMap[appState.lang], opcoesFecha).toUpperCase();
-
-    const domBento = document.getElementById('bento-hoy');
-    const domModuloExtra = document.getElementById('modulo-extra');
-    const domFeedbackPanel = document.getElementById('panel-rpe');
-    const btnAbrirFeedback = document.getElementById('btn-abrir-feedback');
-
-    if (entreno) {
-        document.getElementById('semana-actual').innerText = entreno.semana;
-        document.getElementById('semana-total').innerText = entreno.semanaTotal;
-        document.getElementById('fase-actual').innerText = entreno.fase;
-        document.getElementById('resumen-ejecutivo').innerText = entreno.resumen;
-        document.getElementById('barra-progreso').style.width = `${(entreno.semana / entreno.semanaTotal) * 100}%`;
-
-        document.getElementById('tipo-entreno').innerText = entreno.tipo;
-        document.getElementById('metrica-entreno').innerHTML = `${entreno.metricaBase} <span class="unidad">${entreno.unidad}</span>`;
+    gerarPlanoTreino() {
+        const dataInicio = new Date(this.state.atleta.dataInicioISO + "T00:00:00");
+        const dataFim = new Date(this.state.prova.dataStr + "T00:00:00");
+        const diasTotais = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24));
         
-        if (entreno.flagAjuste) {
-            document.getElementById('detalle-entreno').innerHTML = `<strong class="text-terracota">⚠️ DYNAMIC ADJUSTMENT:</strong> ${entreno.detalle}`;
-            domBento.style.borderLeftColor = "#e74c3c";
-        } else {
-            document.getElementById('detalle-entreno').innerText = entreno.detalle;
-            domBento.style.borderLeftColor = entreno.colorTema;
-        }
-
-        if (entreno.extraHTML) {
-            domModuloExtra.classList.remove('vista-oculta'); domModuloExtra.innerHTML = entreno.extraHTML;
-        } else { domModuloExtra.classList.add('vista-oculta'); }
-
-        if (entreno.status === 'completado') {
-            btnAbrirFeedback.classList.add('vista-oculta');
-            domFeedbackPanel.classList.remove('vista-oculta');
-            document.getElementById('input-dist-real').value = entreno.dadosExecucao.distReal;
-            document.getElementById('input-dist-real').disabled = true;
-            document.getElementById('input-tempo-real').value = entreno.dadosExecucao.tempoReal;
-            document.getElementById('input-tempo-real').disabled = true;
-            document.getElementById('input-rpe').value = entreno.dadosExecucao.rpe;
-            document.getElementById('input-rpe').disabled = true;
-            document.getElementById('valor-rpe').innerText = entreno.dadosExecucao.rpe;
-            document.getElementById('btn-processar-feedback').classList.add('vista-oculta');
-        } else {
-            btnAbrirFeedback.classList.remove('vista-oculta');
-            domFeedbackPanel.classList.add('vista-oculta');
-            document.getElementById('input-dist-real').disabled = false; document.getElementById('input-dist-real').value = '';
-            document.getElementById('input-tempo-real').disabled = false; document.getElementById('input-tempo-real').value = '';
-            document.getElementById('input-rpe').disabled = false; document.getElementById('input-rpe').value = '5';
-            document.getElementById('valor-rpe').innerText = '5';
-            document.getElementById('btn-processar-feedback').classList.remove('vista-oculta');
-        }
-    } else {
-        document.getElementById('tipo-entreno').innerText = "-";
-        document.getElementById('detalle-entreno').innerText = "-";
-        btnAbrirFeedback.classList.add('vista-oculta');
-    }
-    renderizarCajonPlan();
-}
-
-// Control de Calidad: Validación de Inputs antes de procesar ACWR
-function processarFeedbackExecucao() {
-    const fechaStr = formatarDataLocal(appState.fechaVisualizada);
-    const index = appState.motorData.planoVigente.findIndex(e => e.id === fechaStr);
-
-    if (index !== -1) {
-        const distRealStr = document.getElementById('input-dist-real').value;
-        const tempoRealStr = document.getElementById('input-tempo-real').value;
-        const rpe = parseInt(document.getElementById('input-rpe').value);
-
-        // Quality Control Gate
-        if (!distRealStr || !tempoRealStr || parseFloat(distRealStr) <= 0 || parseInt(tempoRealStr) <= 0) {
-            alert(i18n[appState.lang].erroValidacao);
-            return; // Bloquea el guardado si falla la validación
-        }
-
-        const distReal = parseFloat(distRealStr);
-        const tempoReal = parseInt(tempoRealStr);
-        const cargaInterna = rpe * tempoReal; 
-
-        appState.motorData.planoVigente[index].status = 'completado';
-        appState.motorData.planoVigente[index].dadosExecucao = { distReal, tempoReal, rpe, cargaInterna };
-
-        if (rpe >= 8 && tempoReal > 45) {
-            for (let i = index + 1; i < index + 5 && i < appState.motorData.planoVigente.length; i++) {
-                let proxTreino = appState.motorData.planoVigente[i];
-                if (proxTreino.tipo.includes("VO2") || proxTreino.tipo.includes("Quality")) {
-                    proxTreino.flagAjuste = true;
-                    proxTreino.tipo = "Recovery Run (Substituted)";
-                    proxTreino.detalle = "Fatigue Flag: High load detected. Intensity reduced to protect structural engine.";
-                    proxTreino.colorTema = "#2980b9";
-                    break; 
-                }
-            }
-            alert("⚠️ High fatigue detected. Next quality session adjusted.");
-        }
-
-        localStorage.setItem('runflow_db', JSON.stringify(appState.motorData));
-        renderizarVistaDiaria();
-    }
-}
-
-// ==========================================
-// 5. RENDER PDF Y EVENTOS
-// ==========================================
-function renderizarCajonPlan() {
-    const contenedor = document.getElementById('contenedor-lista-plan');
-    contenedor.innerHTML = '';
-    
-    appState.motorData.planoVigente.forEach(entreno => {
-        const item = document.createElement('div');
-        item.className = 'item-lista-pdf';
+        const { longao, tempo, regen } = this.state.atleta.diasTreino;
+        const numRegen = Math.max(1, regen.length);
         
-        let colorStatus = entreno.status === 'completado' ? 'var(--acento-sucesso)' : 'var(--texto-secundario)';
-        let labelStatus = entreno.status === 'completado' ? `✔ ${entreno.dadosExecucao.distReal}km` : `${entreno.metricaBase} ${entreno.unidad}`;
+        let idCounter = 0; 
+        this.state.plano = [];
+
+        const volSemanalBase = this.state.atleta.volumeSemanalBase;
+        const capSemanalAbsoluto = Math.max(volSemanalBase * 1.15, this.state.prova.distancia * 2.5);
+        let maxLongao = this.state.prova.distancia * 0.9;
+        if (this.state.prova.distancia >= 42.2) maxLongao = 34; 
+
+        for (let i = 0; i <= diasTotais; i++) {
+            let dataTreino = new Date(dataInicio);
+            dataTreino.setDate(dataInicio.getDate() + i);
+            const diaSemana = dataTreino.getDay() === 0 ? 7 : dataTreino.getDay();
+            const diaSemanaNormal = dataTreino.getDay();
             
-        if (entreno.tipo.includes("Rest") || entreno.tipo.includes("Descanso")) {
-            labelStatus = entreno.status === 'completado' ? labelStatus : "Rest";
+            const semanasParaProva = Math.ceil((diasTotais - i) / 7);
+            const numeroSemanaAtual = Math.floor(i / 7);
+            const ehDeload = (numeroSemanaAtual % 4 === 3);
+
+            let fatorEvolucao = Math.pow(1.05, numeroSemanaAtual);
+            let volSemanalAtual = Math.min(volSemanalBase * fatorEvolucao, capSemanalAbsoluto);
+
+            if (ehDeload) volSemanalAtual *= 0.75;
+            if (semanasParaProva === 2) volSemanalAtual *= 0.6;
+            if (semanasParaProva === 1) volSemanalAtual *= 0.4;
+
+            let tipo = "Descanso", distancia = 0, prescricao = "";
+
+            if (i === diasTotais) {
+                tipo = "PROVA ALVO"; distancia = this.state.prova.distancia; prescricao = "O trabalho está feito. Confie no polimento e execute.";
+            } else if ((diaSemanaNormal === longao || diaSemana === longao) && i !== diasTotais) { 
+                tipo = "Longão";
+                distancia = Math.min(volSemanalAtual * 0.45, maxLongao); 
+                
+                if (semanasParaProva <= 2) {
+                    prescricao = "Tapering (Polimento). Redução drástica para supercompensação (pico de TSB).";
+                } else if (ehDeload) {
+                    prescricao = "Semana Regenerativa (Deload). Absorção sistêmica de carga acumulada.";
+                } else {
+                    prescricao = "Construção aeróbica (LISS). Segure o ritmo na Z2 rígida.";
+                }
+            } else if (diaSemanaNormal === tempo || diaSemana === tempo) { 
+                tipo = "Tempo Run"; 
+                distancia = Math.max(4, volSemanalAtual * 0.20); 
+                prescricao = "Limiar de Lactato. Desconforto controlado e sustentável na Z3-Z4.";
+            } else if (regen.includes(diaSemanaNormal) || regen.includes(diaSemana)) { 
+                tipo = "Regenerativo"; 
+                distancia = Math.max(3, (volSemanalAtual * 0.35) / numRegen); 
+                prescricao = "Active Recovery puro. Z1, flushing do ácido lático sem gerar estresse celular.";
+            }
+
+            this.state.plano.push({
+                id: idCounter++, dataISO: dataTreino.toISOString().split('T')[0],
+                tipo: tipo, distanciaBase: parseFloat(distancia.toFixed(1)), 
+                prescricao: prescricao, concluido: false
+            });
+        }
+    }
+
+    _segundosParaPace(seg) {
+        const m = Math.floor(seg / 60); const s = Math.round(seg % 60); return `${m}:${s < 10 ? '0' : ''}${s}/km`;
+    }
+
+    obterZonasDinamicas() {
+        const base = this.state.atleta.paceBaseSegundos;
+        return {
+            "Regenerativo": { pace: this._segundosParaPace(base * 1.30), fc: "Z1-Z2 (Mto Leve)" },
+            "Longão": { pace: this._segundosParaPace(base * 1.15), fc: "Z2 (Leve)" },
+            "Tempo Run": { pace: this._segundosParaPace(base * 0.98), fc: "Z3-Z4 (Forte)" },
+            "PROVA ALVO": { pace: this._segundosParaPace(base * 1.02), fc: "Z4-Máx" }
+        };
+    }
+
+    obterTenisSugerido(tipoTreino) {
+        switch (tipoTreino) {
+            case "Longão":
+            case "PROVA ALVO":
+                return "ASICS Novablast 6 (Máximo amortecimento e conforto)";
+            case "Tempo Run":
+                return "On Cloudsurfer Next (Rocker ágil e maior firmeza no limiar)";
+            case "Regenerativo":
+                return "On Cloudsurfer Next ou Novablast 6 (Escolha do atleta)";
+            default:
+                return "Opção à sua escolha";
+        }
+    }
+
+    processarTreino(treinoId, distReal, tempoMin, fcMedia, rpe) {
+        const treino = this.state.plano.find(t => t.id === parseInt(treinoId));
+        if(!treino) return;
+
+        treino.concluido = true;
+        treino.resultado = { dist: distReal, tempo: tempoMin, fc: fcMedia, rpe: rpe };
+
+        let logMsg = `[${treino.tipo}] ${distReal}km concluídos em ${tempoMin}min. `;
+
+        if (!isNaN(fcMedia) && fcMedia > this.state.atleta.fcMax) {
+            this.state.atleta.fcMax = fcMedia;
+            logMsg += `PICO DETECTADO: Nova FC Máxima (${fcMedia} bpm). `;
+        }
+
+        let tss = 0;
+        if (!isNaN(fcMedia) && fcMedia > 0) {
+            const hrr = this.state.atleta.fcMax - this.state.atleta.fcRepouso;
+            const hrRatio = Math.max(0.1, Math.min(1, (fcMedia - this.state.atleta.fcRepouso) / hrr));
+            const ifFactor = hrRatio / 0.85; 
+            tss = (tempoMin / 60) * Math.pow(ifFactor, 2) * 100;
+        } else {
+            const ifFactor = Math.max(0.4, rpe / 7.5);
+            tss = (tempoMin / 60) * Math.pow(ifFactor, 2) * 100;
+            logMsg += `(Usado sRPE ${rpe}/10). `;
         }
         
-        item.innerHTML = `
-            <div style="flex: 1; padding-right: 15px;">
-                <strong>${entreno.fecha}</strong> <span class="badge-fase" style="font-size:0.6rem;">${entreno.fase.split(' ')[0]}</span><br>
-                <span style="font-size: 0.9rem; font-weight: 600; color: ${entreno.flagAjuste ? 'var(--acento-perigo)' : 'inherit'};">${entreno.tipo}</span><br>
-                <span style="font-size: 0.75rem; color: var(--texto-secundario); display: block; margin-top: 4px;">${entreno.detalle}</span>
-            </div>
-            <div style="font-weight: 700; color: ${colorStatus}; white-space: nowrap;">${labelStatus}</div>
-        `;
-        contenedor.appendChild(item);
-    });
-}
+        tss = Math.round(tss);
+        logMsg += `Carga gerada (TSS): ${tss}.`;
 
-function exportarPDF() {
-    const element = document.getElementById('contenedor-lista-plan');
-    const contenedorPDF = document.createElement('div');
-    contenedorPDF.style.padding = '30px'; contenedorPDF.style.backgroundColor = '#FFFFFF';
-    contenedorPDF.style.color = '#2D2D2D'; contenedorPDF.style.fontFamily = 'sans-serif';
-    
-    const header = document.createElement('div');
-    header.innerHTML = `<h2 style="margin-bottom: 5px; color: #C05746;">RunFlow Macrocycle</h2>
-        <p style="margin-bottom: 25px; color: #7A7A7A; font-size: 0.9rem;">Target: ${appState.motorData.meta.corridaAlvo} | Generated: ${appState.motorData.meta.dataCriacao}</p>`;
-    
-    contenedorPDF.appendChild(header); contenedorPDF.appendChild(element.cloneNode(true));
+        this.state.treinosRealizados.push({
+            idReferencia: treino.id,
+            dataISO: treino.dataISO,
+            tss: tss,
+            dist: distReal
+        });
 
-    const opt = { margin: 10, filename: 'RunFlow_Plan.pdf', image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-    html2pdf().set(opt).from(contenedorPDF).save();
-}
+        this.recalcularLinhaDoTempo();
 
-function vincularEventos() {
-    document.getElementById('btn-gerar-plano').addEventListener('click', guardarPerfil);
-    document.getElementById('btn-nav-ayer').addEventListener('click', () => { appState.fechaVisualizada.setDate(appState.fechaVisualizada.getDate() - 1); renderizarVistaDiaria(); });
-    document.getElementById('btn-nav-hoy').addEventListener('click', () => { appState.fechaVisualizada = new Date(); appState.fechaVisualizada.setHours(0,0,0,0); renderizarVistaDiaria(); });
-    document.getElementById('btn-nav-manana').addEventListener('click', () => { appState.fechaVisualizada.setDate(appState.fechaVisualizada.getDate() + 1); renderizarVistaDiaria(); });
-    
-    document.getElementById('btn-abrir-feedback').addEventListener('click', () => {
-        document.getElementById('btn-abrir-feedback').classList.add('vista-oculta');
-        document.getElementById('panel-rpe').classList.remove('vista-oculta');
-    });
-    
-    document.getElementById('input-rpe').addEventListener('input', (e) => { document.getElementById('valor-rpe').innerText = e.target.value; });
-    document.getElementById('btn-processar-feedback').addEventListener('click', processarFeedbackExecucao);
-    
-    const toggleCajon = () => document.getElementById('cajon-historial').classList.toggle('cajon-abierto');
-    document.getElementById('btn-toggle-cajon').addEventListener('click', toggleCajon);
-    document.getElementById('btn-cerrar-cajon').addEventListener('click', toggleCajon);
-    
-    document.getElementById('btn-exportar-pdf').addEventListener('click', exportarPDF);
-    document.getElementById('btn-reset-motor').addEventListener('click', () => {
-        if(confirm(i18n[appState.lang].btnResetar + "?")) {
-            localStorage.removeItem('runflow_db');
-            appState.motorData = { meta: null, planoOriginal: [], planoVigente: [] };
-            appState.fechaVisualizada = new Date(); appState.fechaVisualizada.setHours(0,0,0,0);
-            toggleCajon(); alternarVistas('vista-onboarding');
+        const acwr = this.state.atleta.ctl > 0 ? (this.state.atleta.atl / this.state.atleta.ctl) : 0;
+        
+        if (acwr > 1.5 && this.state.atleta.multiplicadorVolume > 0.8) {
+            logMsg += ` 🚨 ALERTA: Zona de perigo de lesão (ACWR > 1.5). Reduzindo provisoriamente o volume base em 15% para preservação.`;
+            this.state.atleta.multiplicadorVolume *= 0.85; 
+        } else if (acwr < 1.3 && this.state.atleta.multiplicadorVolume < 1.0) {
+            this.state.atleta.multiplicadorVolume = 1.0;
         }
+
+        this.state.logs.unshift({ data: new Date().toLocaleDateString('pt-BR'), msg: logMsg });
+        this.saveState();
+    }
+    
+    getDistanciaSugerida(treinoBase) {
+        if (treinoBase.tipo === "Descanso" || treinoBase.tipo === "PROVA ALVO") return treinoBase.distanciaBase;
+        return parseFloat((treinoBase.distanciaBase * this.state.atleta.multiplicadorVolume).toFixed(1));
+    }
+}
+
+const app = new RunningCoach();
+
+function formatarDataHoje() {
+    const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const d = new Date(); return `${dias[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]}`;
+}
+
+function renderizarTelas() {
+    const navTabs = document.getElementById('nav-tabs');
+    const btnConfig = document.getElementById('btn-config');
+    
+    if (!app.state) {
+        navTabs.classList.remove('active');
+        btnConfig.style.display = 'none';
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+        document.getElementById('screen-setup').classList.add('active-screen');
+        
+        const minDate = new Date(); minDate.setDate(minDate.getDate() + 28);
+        document.getElementById('setup-data-alvo').value = minDate.toISOString().split('T')[0];
+    } else {
+        navTabs.classList.add('active');
+        btnConfig.style.display = 'flex';
+        switchTab('screen-today', 'tab-today');
+        atualizarTelasGlobais();
+    }
+}
+
+function switchTab(screenId, tabId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+    document.getElementById(screenId).classList.add('active-screen');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+}
+
+function atualizarTelasGlobais() {
+    const hojeISO = new Date().toISOString().split('T')[0];
+    const treinoHoje = app.state.plano.find(t => t.dataISO === hojeISO);
+    const zonas = app.obterZonasDinamicas();
+    const uiHoje = document.getElementById('ui-hoje');
+    
+    if (!treinoHoje) {
+        uiHoje.innerHTML = `<div class="today-date">${formatarDataHoje()}</div><h2 class="today-type">Ciclo Concluído</h2><p class="today-desc">Sua jornada de treinos chegou ao fim.</p>`;
+    } else if (treinoHoje.concluido) {
+        uiHoje.innerHTML = `<div class="today-date">${formatarDataHoje()}</div><h2 class="today-type">${treinoHoje.tipo}</h2><div class="today-done"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><p class="today-desc">Sessão finalizada. Foco na recuperação e síntese proteica.</p>`;
+    } else if (treinoHoje.tipo === "Descanso") {
+        uiHoje.innerHTML = `<div class="today-date">${formatarDataHoje()}</div><h2 class="today-type">Recovery</h2><div class="today-rest"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></div><p class="today-desc">O ganho de performance ocorre durante o repouso. Mantenha a disciplina.</p>`;
+    } else {
+        const paceAlvo = zonas[treinoHoje.tipo]?.pace || '-';
+        const fcAlvo = zonas[treinoHoje.tipo]?.fc || '-';
+        const distCalculada = app.getDistanciaSugerida(treinoHoje);
+        const tenisRecomendado = app.obterTenisSugerido(treinoHoje.tipo);
+        
+        uiHoje.innerHTML = `
+            <div class="today-date">${formatarDataHoje()}</div>
+            <h2 class="today-type">${treinoHoje.tipo}</h2>
+            <div class="today-distance">${distCalculada}<span>km</span></div>
+            <div class="today-metrics">
+                <div class="today-metrics-card"><div>Pace Target</div><strong>${paceAlvo}</strong></div>
+                <div class="today-metrics-card"><div>Zona FC</div><strong>${fcAlvo}</strong></div>
+            </div>
+            <div style="margin-bottom: 20px; font-size: 0.82rem; color: var(--brand-accent); font-weight: 700;">
+                👟 Tênis Recomendado: <span style="color: var(--text-primary); font-weight: 600;">${tenisRecomendado}</span>
+            </div>
+            <p class="today-desc">"${treinoHoje.prescricao}"</p>
+            <button class="btn-giant" onclick="abrirTreino(${treinoHoje.id}, '${treinoHoje.tipo}', ${distCalculada})">Registrar Treino</button>
+        `;
+    }
+
+    const ctl = app.state.atleta.ctl;
+    const atl = app.state.atleta.atl;
+    document.getElementById('val-ctl').innerText = Math.round(ctl);
+    document.getElementById('val-atl').innerText = Math.round(atl);
+    
+    const acwr = ctl > 0 ? (atl / ctl).toFixed(2) : (0).toFixed(2);
+    const acwrEl = document.getElementById('val-acwr');
+    acwrEl.innerText = acwr;
+    acwrEl.classList.remove('positive', 'negative', 'danger');
+    
+    let acwrLabel = "";
+    if (acwr < 0.8) { acwrEl.classList.add('negative'); acwrLabel = "Sub-carga"; }
+    else if (acwr <= 1.3) { acwrEl.classList.add('positive'); acwrLabel = "Seguro"; }
+    else if (acwr <= 1.5) { acwrEl.classList.add('negative'); acwrLabel = "Atenção"; }
+    else { acwrEl.classList.add('danger'); acwrLabel = "Perigo"; }
+    document.getElementById('label-acwr').innerText = acwrLabel;
+
+    const tsb = Math.round(app.state.atleta.tsb);
+    const tsbEl = document.getElementById('val-tsb');
+    tsbEl.innerText = tsb > 0 ? `+${tsb}` : tsb;
+    tsbEl.classList.remove('positive', 'negative', 'danger');
+    if (tsb >= -15 && tsb <= 10) tsbEl.classList.add('positive'); 
+    else if (tsb < -25) tsbEl.classList.add('danger'); 
+    else tsbEl.classList.add('negative'); 
+
+    const feed = document.getElementById('feed-relatorios');
+    feed.innerHTML = app.state.logs.length === 0 ? '<p style="color: var(--text-tertiary); font-size: 0.85rem;">Aguardando os primeiros dados (TSS)...</p>' 
+        : app.state.logs.slice(0, 15).map(log => `<div class="log-entry"><span class="log-date">${log.data}</span>${log.msg}</div>`).join('');
+
+    const uiCalendario = document.getElementById('ui-calendario');
+    uiCalendario.innerHTML = '';
+    app.state.plano.filter(t => t.dataISO >= hojeISO).slice(0, 7).forEach(treino => {
+        const ehHoje = treino.dataISO === hojeISO;
+        const ehDescanso = treino.tipo === "Descanso";
+        const [y, m, d] = treino.dataISO.split('-'); 
+        const distCalculada = app.getDistanciaSugerida(treino);
+        const tenisRecomendado = app.obterTenisSugerido(treino.tipo);
+        
+        let html = `<div class="day-card ${ehHoje ? 'today' : ''} ${treino.concluido ? 'done' : ''}">
+            <div class="day-info">
+                <div class="day-date">${ehHoje ? 'HOJE' : `${d}/${m}`}</div>
+                <div class="day-title">${treino.tipo} ${!ehDescanso ? `• ${distCalculada}km` : ''}</div>
+                ${!ehDescanso ? `<div class="day-details">Pace: ${zonas[treino.tipo]?.pace || '-'} | 👟 ${tenisRecomendado.split(' (')[0]}</div>` : `<div class="day-details">Recuperação celular.</div>`}
+            </div>`;
+        if (treino.concluido) html += `<div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>`;
+        html += `</div>`;
+        uiCalendario.innerHTML += html;
     });
 }
 
-document.addEventListener('DOMContentLoaded', inicializarApp);
+window.abrirPlanoCompleto = function() {
+    if(!app.state || !app.state.plano) return;
+    const container = document.getElementById('container-plano-completo');
+    const zonas = app.obterZonasDinamicas();
+    container.innerHTML = '';
+
+    let semanaAtualNum = 1;
+    let htmlSemana = `<div class="week-group"><div class="week-header"><span>Semana ${semanaAtualNum}</span></div>`;
+
+    app.state.plano.forEach((treino, index) => {
+        const [y, m, d] = treino.dataISO.split('-');
+        const ehDescanso = treino.tipo === "Descanso";
+        const distCalculada = app.getDistanciaSugerida(treino);
+        const tenisRecomendado = app.obterTenisSugerido(treino.tipo);
+
+        if (index > 0 && index % 7 === 0) {
+            semanaAtualNum++;
+            htmlSemana += `</div><div class="week-group"><div class="week-header"><span>Semana ${semanaAtualNum} ${semanaAtualNum % 4 === 0 ? '(DELOAD)' : ''}</span></div>`;
+        }
+
+        htmlSemana += `
+            <div class="day-card ${treino.concluido ? 'done' : ''}" style="margin-bottom:6px; padding:12px 14px;">
+                <div class="day-info">
+                    <div class="day-date">${d}/${m}</div>
+                    <div class="day-title" style="font-size: 0.9rem;">${treino.tipo} ${!ehDescanso ? `• ${distCalculada}km` : ''}</div>
+                    ${!ehDescanso ? `<div class="day-details" style="font-size:0.75rem;">Pace: ${zonas[treino.tipo]?.pace || '-'} | 👟 ${tenisRecomendado.split(' (')[0]}</div>` : ''}
+                </div>
+                ${treino.concluido ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand-accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+            </div>
+        `;
+    });
+
+    htmlSemana += `</div>`;
+    container.innerHTML = htmlSemana;
+    abrirModal('modal-plano');
+}
+
+document.getElementById('form-setup').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const checkboxes = document.querySelectorAll('input[name="setup-dias"]:checked');
+    const diasSelecionados = Array.from(checkboxes).map(el => parseInt(el.value));
+    
+    if (diasSelecionados.length < 2) {
+        alert("Selecione pelo menos 2 dias para intercalar intensidade e volume.");
+        return;
+    }
+
+    app.initSetup({
+        nome: document.getElementById('setup-nome').value, 
+        idade: parseInt(document.getElementById('setup-idade').value),
+        genero: document.getElementById('setup-genero').value,
+        diasSelecionados: diasSelecionados,
+        distAlvo: parseFloat(document.getElementById('setup-dist-alvo').value),
+        dataAlvo: document.getElementById('setup-data-alvo').value, 
+        distAtual: parseFloat(document.getElementById('setup-dist-atual').value),
+        tempoAtual: parseInt(document.getElementById('setup-tempo-atual').value), 
+        volSemanal: parseFloat(document.getElementById('setup-vol-semanal').value),
+        fcRepouso: parseInt(document.getElementById('setup-fc-repouso').value),
+        fcMax: document.getElementById('setup-fc-max').value
+    });
+    renderizarTelas();
+});
+
+window.abrirModal = function(idModal) { document.getElementById(idModal).classList.add('active'); }
+window.fecharModal = function(idModal) { document.getElementById(idModal).classList.remove('active'); }
+window.fecharModaisFora = function(event, idModal) { if (event.target === document.getElementById(idModal)) fecharModal(idModal); }
+
+window.abrirTreino = function(id, tipo, distCalculada) {
+    abrirModal('modal-treino');
+    document.getElementById('treino-id').value = id; 
+    document.getElementById('input-tipo').value = tipo; 
+    document.getElementById('input-dist').value = distCalculada;
+    document.getElementById('input-tempo').value = ''; 
+    document.getElementById('input-fc').value = ''; 
+    document.getElementById('input-rpe').value = '6';
+}
+
+document.getElementById('form-treino').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = document.getElementById('treino-id').value;
+    const dist = parseFloat(document.getElementById('input-dist').value);
+    const tempo = parseInt(document.getElementById('input-tempo').value);
+    const fc = parseInt(document.getElementById('input-fc').value);
+    const rpe = parseInt(document.getElementById('input-rpe').value);
+
+    app.processarTreino(id, dist, tempo, fc, rpe);
+    fecharModal('modal-treino');
+    e.target.reset();
+    atualizarTelasGlobais();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+window.abrirConfig = function() {
+    if (!app.state) return;
+    document.getElementById('config-genero').value = app.state.atleta.genero;
+    document.getElementById('config-fc-repouso').value = app.state.atleta.fcRepouso;
+    document.getElementById('config-fc-max').value = app.state.atleta.fcMax;
+    document.getElementById('config-pace-base').value = app.state.atleta.paceBaseSegundos;
+    abrirModal('modal-config');
+}
+
+document.getElementById('form-config').addEventListener('submit', (e) => {
+    e.preventDefault();
+    app.state.atleta.genero = document.getElementById('config-genero').value;
+    app.state.atleta.fcRepouso = parseInt(document.getElementById('config-fc-repouso').value);
+    app.state.atleta.fcMax = parseInt(document.getElementById('config-fc-max').value);
+    app.state.atleta.paceBaseSegundos = parseInt(document.getElementById('config-pace-base').value);
+    
+    app.state.logs.unshift({ data: new Date().toLocaleDateString('pt-BR'), msg: `⚙️ Perfil fisiológico atualizado. Zonas reajustadas.` });
+    app.saveState(); fecharModal('modal-config'); atualizarTelasGlobais();
+});
+
+function resetarApp() {
+    if(confirm("ATENÇÃO: Deseja destruir todo o seu histórico e recalibrar o motor do zero?")) { 
+        localStorage.removeItem(STORAGE_KEY); location.reload(); 
+    }
+}
+
+renderizarTelas();
