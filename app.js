@@ -16,8 +16,8 @@ themeToggleBtn.addEventListener('click', () => {
 const STORAGE_KEY = 'karu_app_v4';
 
 class RunningCoach {
-    constructor() { 
-        this.state = this.loadState(); 
+    constructor() {
+        this.state = this.loadState();
         if (this.state) {
             if(!this.state.atleta.tenis) this.state.atleta.tenis = [];
             this.recalcularLinhaDoTempo();
@@ -33,10 +33,10 @@ class RunningCoach {
         }
     }
     
-    saveState() { 
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state)); 
+    saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
     }
-
+    
     recalcularLinhaDoTempo() {
         if (!this.state || !this.state.atleta || !this.state.atleta.dataInicioISO) return;
         
@@ -83,21 +83,21 @@ class RunningCoach {
         
         this.saveState();
     }
-
+    
     initSetup(dadosForm) {
         const fcMaxDigitada = parseInt(dadosForm.fcMax);
         const fcMaxCalc = (!isNaN(fcMaxDigitada) && fcMaxDigitada > 0) ? fcMaxDigitada : Math.round(208 - 0.7 * dadosForm.idade);
         
         const distAtualSegura = Math.max(1, dadosForm.distAtual);
         const tempoAtualSeguro = Math.max(1, dadosForm.tempoAtual);
-        const paceAtualSegundos = Math.round((tempoAtualSeguro / distAtualSegura) * 60); 
+        const paceAtualSegundos = Math.round((tempoAtualSeguro / distAtualSegura) * 60);
         
         const volSemanal = Math.max(distAtualSegura, dadosForm.volSemanal);
         const tssSemanal = ((volSemanal * (paceAtualSegundos / 60)) / 60) * Math.pow(0.75, 2) * 100;
         const ctlInicial = tssSemanal / 7; 
-
+        
         let dias = dadosForm.diasSelecionados;
-        dias.sort((a,b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b)); 
+        dias.sort((a,b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
         
         const dayLongao = dias[dias.length - 1]; 
         let dayTempo = dias[0]; 
@@ -105,15 +105,14 @@ class RunningCoach {
         
         const diasRegen = dias.filter(d => d !== dayLongao && d !== dayTempo);
         const dataHojeISO = new Date().toISOString().split('T')[0];
-
-        // Inicializa o array de tênis com o Tênis do Onboarding
+        
         const tenisInicial = [{
             id: Date.now(),
             nome: dadosForm.tenisNome,
             categoria: dadosForm.tenisCat,
             kmAcumulados: 0
         }];
-
+        
         this.state = {
             atleta: {
                 nome: dadosForm.nome, idade: dadosForm.idade, genero: dadosForm.genero,
@@ -131,12 +130,13 @@ class RunningCoach {
             prova: { distancia: dadosForm.distAlvo, dataStr: dadosForm.dataAlvo },
             plano: [], treinosRealizados: [], logs: []
         };
-
+        
         this.state.logs.push({ data: new Date().toLocaleDateString('pt-BR'), msg: `Calibração Karvonen ativa (FC Máx: ${fcMaxCalc}, Repouso: ${dadosForm.fcRepouso}). Tênis '${dadosForm.tenisNome}' cadastrado.` });
+        
         this.gerarPlanoTreino();
         this.recalcularLinhaDoTempo();
     }
-
+    
     gerarPlanoTreino() {
         const dataInicio = new Date(this.state.atleta.dataInicioISO + "T00:00:00");
         const dataFim = new Date(this.state.prova.dataStr + "T00:00:00");
@@ -147,11 +147,10 @@ class RunningCoach {
         
         let idCounter = 0; 
         this.state.plano = [];
-
         const volSemanalBase = this.state.atleta.volumeSemanalBase;
         const capSemanalAbsoluto = Math.max(volSemanalBase * 1.15, this.state.prova.distancia * 2.5);
         let maxLongao = this.state.prova.distancia >= 42.2 ? 34 : this.state.prova.distancia * 0.9;
-
+        
         for (let i = 0; i <= diasTotais; i++) {
             let dataTreino = new Date(dataInicio);
             dataTreino.setDate(dataInicio.getDate() + i);
@@ -161,26 +160,26 @@ class RunningCoach {
             const semanasParaProva = Math.ceil((diasTotais - i) / 7);
             const numeroSemanaAtual = Math.floor(i / 7);
             const ehDeload = (numeroSemanaAtual % 4 === 3);
-
             let volSemanalAtual = Math.min(volSemanalBase * Math.pow(1.05, numeroSemanaAtual), capSemanalAbsoluto);
+            
             if (ehDeload) volSemanalAtual *= 0.75;
             if (semanasParaProva === 2) volSemanalAtual *= 0.6;
             if (semanasParaProva === 1) volSemanalAtual *= 0.4;
-
+            
             let tipo = "Descanso", distancia = 0, prescricao = "", estrutura = [];
-
+            
             if (i === diasTotais) {
                 tipo = "PROVA ALVO"; distancia = this.state.prova.distancia; 
                 prescricao = "O trabalho está feito. Confie no polimento e execute.";
                 estrutura = [`${distancia}km contínuos com estratégia de prova.`];
-            } else if ((diaSemanaNormal === longao || diaSemana === longao) && i !== diasTotais) { 
+            } else if ((diaSemanaNormal === longao || diaSemana === longao) && i !== diasTotais) {
                 tipo = "Longão"; 
                 distancia = Math.min(volSemanalAtual * 0.45, maxLongao); 
                 if (semanasParaProva <= 2) prescricao = "Tapering (Polimento). Absorção de carga.";
                 else if (ehDeload) prescricao = "Semana Regenerativa (Deload).";
                 else prescricao = "Construção aeróbica primária (LISS). Segure o ritmo na Z2.";
                 estrutura = [`${distancia.toFixed(1)}km contínuos em Z2 rígida.`];
-            } else if (diaSemanaNormal === tempo || diaSemana === tempo) { 
+            } else if (diaSemanaNormal === tempo || diaSemana === tempo) {
                 const intensos = ["Tempo Run", "Intervalado VO2", "Fartlek", "Subidas"];
                 tipo = intensos[numeroSemanaAtual % 4];
                 
@@ -202,13 +201,12 @@ class RunningCoach {
                     prescricao = "Força específica e mecânica.";
                     estrutura = ["Aquecimento: 15min Z1", "Principal: 8x 30s rampa Z5 (desce trotando)", "Soltura: 10min Z1"];
                 }
-            } else if (regen.includes(diaSemanaNormal) || regen.includes(diaSemana)) { 
+            } else if (regen.includes(diaSemanaNormal) || regen.includes(diaSemana)) {
                 tipo = "Regenerativo"; 
                 distancia = Math.max(3, (volSemanalAtual * 0.35) / numRegen); 
                 prescricao = "Active Recovery. Flushing do ácido lático.";
                 estrutura = [`${distancia.toFixed(1)}km extremamente leve (Z1)`];
             }
-
             this.state.plano.push({
                 id: idCounter++, dataISO: dataTreino.toISOString().split('T')[0],
                 tipo: tipo, distanciaBase: parseFloat(distancia.toFixed(1)), 
@@ -216,20 +214,20 @@ class RunningCoach {
             });
         }
     }
-
+    
     _segundosParaPace(seg) {
         if(!seg || isNaN(seg)) return "00:00";
         const m = Math.floor(seg / 60); 
         const s = Math.round(seg % 60); 
         return `${m < 10 ? '0':''}${m}:${s < 10 ? '0' : ''}${s}`;
     }
-
+    
     _paceParaSegundos(str) {
         const parts = str.split(':');
         if(parts.length !== 2) return 330; 
         return (parseInt(parts[0]) * 60) + parseInt(parts[1]);
     }
-
+    
     obterZonasKarvonen() {
         const base = this.state.atleta.paceBaseSegundos;
         const fcMax = this.state.atleta.fcMax;
@@ -237,7 +235,6 @@ class RunningCoach {
         const hrr = fcMax - fcRep;
         
         const calcBPM = (minPct, maxPct) => `${Math.round(fcRep + (minPct * hrr))}-${Math.round(fcRep + (maxPct * hrr))} bpm`;
-
         return {
             "Regenerativo": { pace: `${this._segundosParaPace(base * 1.30)}/km`, fc: `Z1 (${calcBPM(0.50, 0.60)})` },
             "Longão": { pace: `${this._segundosParaPace(base * 1.15)}/km`, fc: `Z2 (${calcBPM(0.60, 0.70)})` },
@@ -249,20 +246,19 @@ class RunningCoach {
             "Descanso": { pace: "-", fc: "-" }
         };
     }
-
+    
     obterTenisSugerido(tipoTreino) {
         const lista = this.state.atleta.tenis || [];
         if (lista.length === 0) return null; 
-
+        
         const ehVelocidade = tipoTreino.includes("Tempo") || tipoTreino.includes("Intervalado") || tipoTreino === "PROVA ALVO";
         const categoriaAlvo = ehVelocidade ? "velocidade" : "rodagem";
-
         let sugerido = lista.find(t => t.categoria === categoriaAlvo);
         if (!sugerido) sugerido = lista.find(t => t.categoria === "versatil");
         
         return sugerido ? sugerido.id : lista[0].id;
     }
-
+    
     adicionarTenis(nome, categoria) {
         this.state.atleta.tenis = this.state.atleta.tenis || [];
         this.state.atleta.tenis.push({
@@ -274,14 +270,13 @@ class RunningCoach {
         this.state.logs.unshift({ data: new Date().toLocaleDateString('pt-BR'), msg: `Tênis '${nome}' adicionado à garagem.` });
         this.saveState();
     }
-
+    
     processarTreino(treinoId, distReal, tempoMin, fcMedia, rpe, tenisId) {
         const treino = this.state.plano.find(t => t.id === parseInt(treinoId));
         if(!treino) return;
-
         treino.concluido = true;
         let tss = 0, logMsg = `[${treino.tipo}] ${distReal}km. `;
-
+        
         if (tenisId && tenisId !== "") {
             const tenisUsado = this.state.atleta.tenis.find(t => t.id == tenisId);
             if(tenisUsado) {
@@ -289,12 +284,12 @@ class RunningCoach {
                 logMsg += `Tênis: ${tenisUsado.nome}. `;
             }
         }
-
+        
         if (!isNaN(fcMedia) && fcMedia > this.state.atleta.fcMax) {
             this.state.atleta.fcMax = fcMedia;
             logMsg += `Nova FC Máx (${fcMedia}). `;
         }
-
+        
         if (!isNaN(fcMedia) && fcMedia > 0) {
             const hrr = this.state.atleta.fcMax - this.state.atleta.fcRepouso;
             const hrRatio = Math.max(0.1, Math.min(1, (fcMedia - this.state.atleta.fcRepouso) / hrr));
@@ -307,7 +302,7 @@ class RunningCoach {
         
         tss = Math.round(tss);
         logMsg += `Carga: ${tss} TSS.`;
-
+        
         this.state.treinosRealizados.push({ 
             idReferencia: treino.id, 
             dataISO: treino.dataISO, 
@@ -315,7 +310,6 @@ class RunningCoach {
             dist: distReal,
             tenisId: tenisId 
         });
-
         this.recalcularLinhaDoTempo();
         this.state.logs.unshift({ data: new Date().toLocaleDateString('pt-BR'), msg: logMsg });
         this.saveState();
@@ -333,7 +327,7 @@ class RunningCoach {
                         tenisRestaurado.kmAcumulados = Math.max(0, tenisRestaurado.kmAcumulados - treinoRemovido.dist);
                     }
                 }
-
+                
                 this.state.treinosRealizados.splice(idx, 1);
                 const treinoPlano = this.state.plano.find(p => p.id == idRef && p.dataISO === dataISO);
                 if(treinoPlano) treinoPlano.concluido = false;
@@ -343,6 +337,57 @@ class RunningCoach {
                 atualizarTelasGlobais();
             }
         }
+    }
+
+    // ==== NOVO ALGORITMO: ÍNDICE DE FOSTER (14 DIAS) ====
+    calcularMonotoniaEFoster() {
+        if (!this.state || !this.state.treinosRealizados) return { monotonia: 0, strain: 0, status: "Ideal" };
+
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        
+        const DIAS = 14;
+        let cargasUltimos14Dias = [];
+        
+        // 1. Extrai a carga (TSS) dos últimos 14 dias consecutivos
+        for (let i = DIAS - 1; i >= 0; i--) {
+            let d = new Date(hoje);
+            d.setDate(hoje.getDate() - i);
+            const dataIsoStr = d.toISOString().split('T')[0];
+            
+            const treinosDoDia = this.state.treinosRealizados.filter(t => t.dataISO === dataIsoStr);
+            let tssDia = 0;
+            treinosDoDia.forEach(t => tssDia += t.tss);
+            
+            cargasUltimos14Dias.push(tssDia);
+        }
+
+        // 2. Cálculo da Média (μ)
+        const somaTotal = cargasUltimos14Dias.reduce((acc, val) => acc + val, 0);
+        const media = somaTotal / DIAS;
+
+        // 3. Cálculo do Desvio Padrão (σ)
+        const variancia = cargasUltimos14Dias.reduce((acc, val) => acc + Math.pow(val - media, 2), 0) / DIAS;
+        const desvioPadrao = Math.sqrt(variancia);
+
+        // Evita divisão por zero caso o atleta não tenha treinado nada ou sempre a mesma carga 0
+        if (desvioPadrao === 0) {
+            return { monotonia: media > 0 ? 2.0 : 0, strain: somaTotal, status: "Sem variação" };
+        }
+
+        // 4. Índices de Foster
+        const monotonia = media / desvioPadrao;
+        const strain = somaTotal * monotonia;
+
+        let status = "Ideal";
+        if (monotonia > 2.0) status = "Alto Risco";
+        else if (monotonia >= 1.5) status = "Atenção";
+
+        return {
+            monotonia: parseFloat(monotonia.toFixed(2)),
+            strain: Math.round(strain),
+            status: status
+        };
     }
 }
 
@@ -471,9 +516,8 @@ function atualizarTelasGlobais() {
         let htmlEstrutura = '';
         if (treinoHoje.estrutura && treinoHoje.estrutura.length > 0) {
             htmlEstrutura = `<div class="workout-structure"><div class="workout-structure-title">Execução</div>` + 
-                treinoHoje.estrutura.map(bloco => `<div class="workout-block">${bloco}</div>`).join('') + `</div>`;
+                 treinoHoje.estrutura.map(bloco => `<div class="workout-block">${bloco}</div>`).join('') + `</div>`;
         }
-
         const tenisIdSugerido = app.obterTenisSugerido(treinoHoje.tipo);
         let nomeTenisSugerido = "Escolha um tênis";
         if(tenisIdSugerido) {
@@ -483,7 +527,7 @@ function atualizarTelasGlobais() {
         let hintTenis = app.state.atleta.tenis.length > 0 
             ? `<div style="margin-bottom: 20px; font-size: 0.82rem; color: var(--brand-accent); font-weight: 700;">Tênis Recomendado: <span style="color: var(--text-primary); font-weight: 600;">${nomeTenisSugerido}</span></div>`
             : '';
-        
+            
         uiHoje.innerHTML = `
             <div class="today-date">${formatarDataHoje()}</div>
             <h2 class="today-type">${treinoHoje.tipo}</h2>
@@ -510,7 +554,7 @@ function atualizarTelasGlobais() {
     const acwr = ctl > 0 ? (atl / ctl).toFixed(2) : (0).toFixed(2);
     const acwrEl = document.getElementById('val-acwr');
     acwrEl.innerText = acwr;
-    acwrEl.classList.remove('positive', 'negative', 'danger');
+    acwrEl.classList.remove('positive', 'warning', 'danger');
     if (acwr <= 1.3) acwrEl.classList.add('positive');
     else if (acwr <= 1.5) acwrEl.classList.add('warning');
     else acwrEl.classList.add('danger');
@@ -523,12 +567,24 @@ function atualizarTelasGlobais() {
     else if (tsb < -25) tsbEl.classList.add('danger'); 
     else tsbEl.classList.add('negative'); 
 
+    // ==== ATUALIZAÇÃO DOM: ÍNDICE DE FOSTER ====
+    const foster = app.calcularMonotoniaEFoster();
+    const monoEl = document.getElementById('val-monotonia');
+    if (monoEl) {
+        monoEl.innerText = foster.monotonia > 0 ? foster.monotonia : '--';
+        monoEl.classList.remove('positive', 'warning', 'danger');
+        
+        if (foster.monotonia > 2.0) monoEl.classList.add('danger');
+        else if (foster.monotonia >= 1.5) monoEl.classList.add('warning');
+        else if (foster.monotonia > 0) monoEl.classList.add('positive');
+    }
+
     const uiGaragem = document.getElementById('ui-garagem');
     if (app.state.atleta.tenis.length === 0) {
         uiGaragem.innerHTML = '<p style="color: var(--text-tertiary); font-size: 0.85rem;">Adicione seus tênis para rastrear o desgaste.</p>';
     } else {
         const catMap = {
-            'rodagem': '🛡️ Rodagem',
+            'rodagem': '👟 Rodagem',
             'velocidade': '⚡ Velocidade',
             'versatil': '🔄 Versátil'
         };
@@ -577,7 +633,7 @@ function atualizarTelasGlobais() {
     app.state.plano.filter(t => t.dataISO >= hojeISO).slice(0, 7).forEach(treino => {
         const ehHoje = treino.dataISO === hojeISO;
         const ehDescanso = treino.tipo === "Descanso";
-        const [, m, d] = treino.dataISO.split('-'); 
+        const [, m, d] = treino.dataISO.split('-');
         
         let html = `<div class="day-card ${ehHoje ? 'today' : ''} ${treino.concluido ? 'done' : ''}">
             <div class="day-info">
@@ -629,12 +685,11 @@ document.getElementById('form-tenis').addEventListener('submit', (e) => {
     atualizarTelasGlobais();
 });
 
-// NOVO: Adicionado captura dos campos setup-tenis-nome e setup-tenis-cat
 document.getElementById('form-setup').addEventListener('submit', (e) => {
     e.preventDefault();
     const dias = Array.from(document.querySelectorAll('input[name="setup-dias"]:checked')).map(el => parseInt(el.value));
     if (dias.length < 2) return alert("Selecione pelo menos 2 dias.");
-
+    
     app.initSetup({
         nome: document.getElementById('setup-nome').value, 
         idade: parseInt(document.getElementById('setup-idade').value),
@@ -647,8 +702,6 @@ document.getElementById('form-setup').addEventListener('submit', (e) => {
         volSemanal: parseFloat(document.getElementById('setup-vol-semanal').value),
         fcRepouso: parseInt(document.getElementById('setup-fc-repouso').value),
         fcMax: document.getElementById('setup-fc-max').value,
-        
-        // Dados do tênis inicial
         tenisNome: document.getElementById('setup-tenis-nome').value,
         tenisCat: document.getElementById('setup-tenis-cat').value
     });
@@ -715,9 +768,9 @@ document.getElementById('form-config').addEventListener('submit', (e) => {
 });
 
 function resetarApp() {
-    if(confirm("ATENÇÃO: Deseja destruir todo o seu histórico e recalibrar o motor?")) { 
-        localStorage.removeItem(STORAGE_KEY); 
-        location.reload(); 
+    if(confirm("ATENÇÃO: Deseja destruir todo o seu histórico e recalibrar o motor?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
     }
 }
 
