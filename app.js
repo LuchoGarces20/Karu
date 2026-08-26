@@ -5,7 +5,6 @@ function applyTheme(themeName) {
     body.setAttribute('data-theme', themeName);
     localStorage.setItem('karu_theme', themeName);
 }
-
 const savedTheme = localStorage.getItem('karu_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 applyTheme(savedTheme);
 
@@ -14,6 +13,18 @@ themeToggleBtn.addEventListener('click', () => {
 });
 
 const STORAGE_KEY = 'karu_app_v4';
+
+// === FUNÇÕES AUXILIARES DE DATA ===
+function getLocalISODate(d = new Date()) {
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+}
+
+function parseLocalDate(isoString) {
+    if(!isoString) return new Date();
+    const [y, m, d] = isoString.split('-');
+    return new Date(y, m - 1, d);
+}
 
 class RunningCoach {
     constructor() {
@@ -40,7 +51,7 @@ class RunningCoach {
     recalcularLinhaDoTempo() {
         if (!this.state || !this.state.atleta || !this.state.atleta.dataInicioISO) return;
         
-        const dataInicial = new Date(this.state.atleta.dataInicioISO + "T00:00:00");
+        const dataInicial = parseLocalDate(this.state.atleta.dataInicioISO);
         const hoje = new Date();
         hoje.setHours(0,0,0,0);
         
@@ -59,7 +70,7 @@ class RunningCoach {
         for(let i = 0; i <= diasTotais; i++) {
             let dataIteracao = new Date(dataInicial);
             dataIteracao.setDate(dataInicial.getDate() + i);
-            const dataIsoStr = dataIteracao.toISOString().split('T')[0];
+            const dataIsoStr = getLocalISODate(dataIteracao);
             
             ctlAtual = ctlAtual * Math.exp(-1 / tauCTL);
             atlAtual = atlAtual * Math.exp(-1 / tauATL);
@@ -79,7 +90,7 @@ class RunningCoach {
         this.state.atleta.ctl = ctlAtual;
         this.state.atleta.atl = atlAtual;
         this.state.atleta.tsb = ctlAtual - atlAtual;
-        this.state.atleta.ultimaAtualizacaoISO = hoje.toISOString().split('T')[0];
+        this.state.atleta.ultimaAtualizacaoISO = getLocalISODate(hoje);
         
         this.saveState();
     }
@@ -104,13 +115,14 @@ class RunningCoach {
         if(dias.length >= 3) dayTempo = dias[Math.floor((dias.length - 1) / 2)];
         
         const diasRegen = dias.filter(d => d !== dayLongao && d !== dayTempo);
-        const dataHojeISO = new Date().toISOString().split('T')[0];
+        const dataHojeISO = getLocalISODate();
         
         const tenisInicial = [{
             id: Date.now(),
             nome: dadosForm.tenisNome,
             categoria: dadosForm.tenisCat,
-            kmAcumulados: 0
+            kmAcumulados: 0,
+            aposentado: false
         }];
         
         this.state = {
@@ -138,8 +150,8 @@ class RunningCoach {
     }
     
     gerarPlanoTreino() {
-        const dataInicio = new Date(this.state.atleta.dataInicioISO + "T00:00:00");
-        const dataFim = new Date(this.state.prova.dataStr + "T00:00:00");
+        const dataInicio = parseLocalDate(this.state.atleta.dataInicioISO);
+        const dataFim = parseLocalDate(this.state.prova.dataStr);
         const diasTotais = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24));
         
         const { longao, tempo, regen } = this.state.atleta.diasTreino;
@@ -208,7 +220,7 @@ class RunningCoach {
                 estrutura = [`${distancia.toFixed(1)}km extremamente leve (Z1)`];
             }
             this.state.plano.push({
-                id: idCounter++, dataISO: dataTreino.toISOString().split('T')[0],
+                id: idCounter++, dataISO: getLocalISODate(dataTreino),
                 tipo: tipo, distanciaBase: parseFloat(distancia.toFixed(1)), 
                 prescricao: prescricao, estrutura: estrutura, concluido: false
             });
@@ -249,14 +261,15 @@ class RunningCoach {
     
     obterTenisSugerido(tipoTreino) {
         const lista = this.state.atleta.tenis || [];
-        if (lista.length === 0) return null; 
+        const ativos = lista.filter(t => !t.aposentado);
+        if (ativos.length === 0) return null;
         
         const ehVelocidade = tipoTreino.includes("Tempo") || tipoTreino.includes("Intervalado") || tipoTreino === "PROVA ALVO";
         const categoriaAlvo = ehVelocidade ? "velocidade" : "rodagem";
-        let sugerido = lista.find(t => t.categoria === categoriaAlvo);
-        if (!sugerido) sugerido = lista.find(t => t.categoria === "versatil");
+        let sugerido = ativos.find(t => t.categoria === categoriaAlvo);
+        if (!sugerido) sugerido = ativos.find(t => t.categoria === "versatil");
         
-        return sugerido ? sugerido.id : lista[0].id;
+        return sugerido ? sugerido.id : ativos[0].id;
     }
     
     adicionarTenis(nome, categoria) {
@@ -265,7 +278,8 @@ class RunningCoach {
             id: Date.now(),
             nome: nome,
             categoria: categoria,
-            kmAcumulados: 0
+            kmAcumulados: 0,
+            aposentado: false
         });
         this.state.logs.unshift({ data: new Date().toLocaleDateString('pt-BR'), msg: `Tênis '${nome}' adicionado à garagem.` });
         this.saveState();
@@ -296,7 +310,8 @@ class RunningCoach {
             const ifFactor = hrRatio / 0.85; 
             tss = (tempoMin / 60) * Math.pow(ifFactor, 2) * 100;
         } else {
-            const ifFactor = Math.max(0.4, rpe / 7.5);
+            const safeRpe = isNaN(rpe) ? 6 : rpe; 
+            const ifFactor = Math.max(0.4, safeRpe / 7.5);
             tss = (tempoMin / 60) * Math.pow(ifFactor, 2) * 100;
         }
         
@@ -338,22 +353,19 @@ class RunningCoach {
             }
         }
     }
-
-    // ==== NOVO ALGORITMO: ÍNDICE DE FOSTER (14 DIAS) ====
+    
     calcularMonotoniaEFoster() {
         if (!this.state || !this.state.treinosRealizados) return { monotonia: 0, strain: 0, status: "Ideal" };
-
         const hoje = new Date();
         hoje.setHours(0,0,0,0);
         
         const DIAS = 14;
         let cargasUltimos14Dias = [];
         
-        // 1. Extrai a carga (TSS) dos últimos 14 dias consecutivos
         for (let i = DIAS - 1; i >= 0; i--) {
             let d = new Date(hoje);
             d.setDate(hoje.getDate() - i);
-            const dataIsoStr = d.toISOString().split('T')[0];
+            const dataIsoStr = getLocalISODate(d);
             
             const treinosDoDia = this.state.treinosRealizados.filter(t => t.dataISO === dataIsoStr);
             let tssDia = 0;
@@ -361,28 +373,24 @@ class RunningCoach {
             
             cargasUltimos14Dias.push(tssDia);
         }
-
-        // 2. Cálculo da Média (μ)
+        
         const somaTotal = cargasUltimos14Dias.reduce((acc, val) => acc + val, 0);
         const media = somaTotal / DIAS;
-
-        // 3. Cálculo do Desvio Padrão (σ)
+        
         const variancia = cargasUltimos14Dias.reduce((acc, val) => acc + Math.pow(val - media, 2), 0) / DIAS;
         const desvioPadrao = Math.sqrt(variancia);
-
-        // Evita divisão por zero caso o atleta não tenha treinado nada ou sempre a mesma carga 0
+        
         if (desvioPadrao === 0) {
             return { monotonia: media > 0 ? 2.0 : 0, strain: somaTotal, status: "Sem variação" };
         }
-
-        // 4. Índices de Foster
+        
         const monotonia = media / desvioPadrao;
         const strain = somaTotal * monotonia;
-
         let status = "Ideal";
+        
         if (monotonia > 2.0) status = "Alto Risco";
         else if (monotonia >= 1.5) status = "Atenção";
-
+        
         return {
             monotonia: parseFloat(monotonia.toFixed(2)),
             strain: Math.round(strain),
@@ -392,12 +400,23 @@ class RunningCoach {
 }
 
 const app = new RunningCoach();
+window.app = app; 
 
 function formatarDataHoje() {
     const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     const d = new Date();
     return `${dias[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]}`;
+}
+
+// === LÓGICA DO WIZARD (ONBOARDING) ===
+let currentWizardStep = 1;
+window.changeWizardStep = function(direction) {
+    document.getElementById(`step-${currentWizardStep}`).classList.remove('active');
+    document.getElementById(`dot-${currentWizardStep}`).classList.remove('active');
+    currentWizardStep += direction;
+    document.getElementById(`step-${currentWizardStep}`).classList.add('active');
+    document.getElementById(`dot-${currentWizardStep}`).classList.add('active');
 }
 
 function renderizarTelas() {
@@ -411,7 +430,7 @@ function renderizarTelas() {
         document.getElementById('screen-setup').classList.add('active-screen');
         
         const minDate = new Date(); minDate.setDate(minDate.getDate() + 28);
-        document.getElementById('setup-data-alvo').value = minDate.toISOString().split('T')[0];
+        document.getElementById('setup-data-alvo').value = getLocalISODate(minDate);
     } else {
         navTabs.classList.add('active');
         btnConfig.style.display = 'flex';
@@ -420,7 +439,7 @@ function renderizarTelas() {
     }
 }
 
-function switchTab(screenId, tabId) {
+window.switchTab = function(screenId, tabId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
     document.getElementById(screenId).classList.add('active-screen');
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -497,7 +516,7 @@ function renderizarGrafico() {
 }
 
 function atualizarTelasGlobais() {
-    const hojeISO = new Date().toISOString().split('T')[0];
+    const hojeISO = getLocalISODate();
     const treinoHoje = app.state.plano.find(t => t.dataISO === hojeISO);
     const zonas = app.obterZonasKarvonen();
     const uiHoje = document.getElementById('ui-hoje');
@@ -515,9 +534,10 @@ function atualizarTelasGlobais() {
         
         let htmlEstrutura = '';
         if (treinoHoje.estrutura && treinoHoje.estrutura.length > 0) {
-            htmlEstrutura = `<div class="workout-structure"><div class="workout-structure-title">Execução</div>` + 
-                 treinoHoje.estrutura.map(bloco => `<div class="workout-block">${bloco}</div>`).join('') + `</div>`;
+            htmlEstrutura = `<div class="workout-structure"><div class="workout-structure-title">Execução</div>` +
+                  treinoHoje.estrutura.map(bloco => `<div class="workout-block">${bloco}</div>`).join('') + `</div>`;
         }
+        
         const tenisIdSugerido = app.obterTenisSugerido(treinoHoje.tipo);
         let nomeTenisSugerido = "Escolha um tênis";
         if(tenisIdSugerido) {
@@ -545,7 +565,7 @@ function atualizarTelasGlobais() {
             <button class="btn-giant" onclick="abrirTreino(${treinoHoje.id}, '${treinoHoje.tipo}', ${distCalculada})">Registrar Treino</button>
         `;
     }
-
+    
     const ctl = app.state.atleta.ctl;
     const atl = app.state.atleta.atl;
     document.getElementById('val-ctl').innerText = Math.round(ctl);
@@ -558,7 +578,7 @@ function atualizarTelasGlobais() {
     if (acwr <= 1.3) acwrEl.classList.add('positive');
     else if (acwr <= 1.5) acwrEl.classList.add('warning');
     else acwrEl.classList.add('danger');
-
+    
     const tsb = Math.round(app.state.atleta.tsb);
     const tsbEl = document.getElementById('val-tsb');
     tsbEl.innerText = tsb > 0 ? `+${tsb}` : tsb;
@@ -567,7 +587,6 @@ function atualizarTelasGlobais() {
     else if (tsb < -25) tsbEl.classList.add('danger'); 
     else tsbEl.classList.add('negative'); 
 
-    // ==== ATUALIZAÇÃO DOM: ÍNDICE DE FOSTER ====
     const foster = app.calcularMonotoniaEFoster();
     const monoEl = document.getElementById('val-monotonia');
     if (monoEl) {
@@ -579,27 +598,43 @@ function atualizarTelasGlobais() {
         else if (foster.monotonia > 0) monoEl.classList.add('positive');
     }
 
+    // === VIBE CODER: AI COACH INSIGHT ===
+    const insightEl = document.getElementById('insight-coach');
+    if (insightEl) {
+        let insightMsg = "<strong>🤖 Coach Karu:</strong> Mantenha a consistência. Seu corpo está respondendo perfeitamente ao plano.";
+        if (acwr > 1.5) insightMsg = "<strong>⚠️ Coach Karu:</strong> Seu corpo acumulou muita fadiga rápido demais (ACWR alto). Reduza a intensidade e foque em recovery.";
+        else if (tsb > 10) insightMsg = "<strong>🚀 Coach Karu:</strong> Você está fresco e recuperado! Excelente janela metabólica para quebrar recordes no treino de velocidade.";
+        else if (tsb < -20) insightMsg = "<strong>📉 Coach Karu:</strong> Fadiga alta detectada. Priorize sono, hidratação e respeite rigorosamente a zona do seu próximo regenerativo.";
+        
+        insightEl.innerHTML = insightMsg;
+    }
+
+    // === VIBE CODER: GARAGEM DE TÊNIS (COM APOSENTADORIA) ===
     const uiGaragem = document.getElementById('ui-garagem');
     if (app.state.atleta.tenis.length === 0) {
         uiGaragem.innerHTML = '<p style="color: var(--text-tertiary); font-size: 0.85rem;">Adicione seus tênis para rastrear o desgaste.</p>';
     } else {
-        const catMap = {
-            'rodagem': '👟 Rodagem',
-            'velocidade': '⚡ Velocidade',
-            'versatil': '🔄 Versátil'
-        };
+        const catMap = { 'rodagem': '🏃 Rodagem', 'velocidade': '⚡ Velocidade', 'versatil': '🔄 Versátil' };
         
-        uiGaragem.innerHTML = app.state.atleta.tenis.map(t => `
-            <div class="shoe-card">
+        uiGaragem.innerHTML = app.state.atleta.tenis.map(t => {
+            const warning = t.kmAcumulados > 600 && !t.aposentado ? '<span title="Desgaste alto!" style="margin-left:6px;">⚠️</span>' : '';
+            const aposentadoStyle = t.aposentado ? 'opacity: 0.5; filter: grayscale(1);' : '';
+            const actionBtn = t.aposentado ? 
+                `<span style="font-size:0.7rem; color: var(--text-tertiary); margin-top: 8px; display: inline-block;">Aposentado</span>` : 
+                `<button class="btn-icon-small" style="margin-top: 8px;" onclick="aposentarTenis(${t.id})">Aposentar</button>`;
+
+            return `
+            <div class="shoe-card" style="${aposentadoStyle}">
                 <div class="shoe-info">
-                    <strong>${t.nome}</strong>
+                    <strong>${t.nome} ${warning}</strong>
                     <span>${catMap[t.categoria] || t.categoria}</span>
+                    ${actionBtn}
                 </div>
                 <div class="shoe-km">
                     ${t.kmAcumulados.toFixed(1)}<span>KM</span>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
     }
 
     const uiHistorico = document.getElementById('ui-historico');
@@ -629,7 +664,7 @@ function atualizarTelasGlobais() {
     feed.innerHTML = app.state.logs.slice(0, 10).map(log => `<div class="log-entry"><span class="log-date">${log.data}</span>${log.msg}</div>`).join('');
 
     const uiCalendario = document.getElementById('ui-calendario');
-    uiCalendario.innerHTML = '';
+    let htmlCalendario = ''; 
     app.state.plano.filter(t => t.dataISO >= hojeISO).slice(0, 7).forEach(treino => {
         const ehHoje = treino.dataISO === hojeISO;
         const ehDescanso = treino.tipo === "Descanso";
@@ -643,14 +678,14 @@ function atualizarTelasGlobais() {
             </div>`;
         if (treino.concluido) html += `<div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand-accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
         html += `</div>`;
-        uiCalendario.innerHTML += html;
+        htmlCalendario += html;
     });
+    uiCalendario.innerHTML = htmlCalendario;
 }
 
 window.abrirPlanoCompleto = function() {
     if(!app.state) return;
     const container = document.getElementById('container-plano-completo');
-    container.innerHTML = '';
     
     let semanaAtualNum = 1;
     let htmlSemana = `<div class="week-group"><div class="week-header"><span>Semana ${semanaAtualNum}</span></div>`;
@@ -705,29 +740,66 @@ document.getElementById('form-setup').addEventListener('submit', (e) => {
         tenisNome: document.getElementById('setup-tenis-nome').value,
         tenisCat: document.getElementById('setup-tenis-cat').value
     });
+    // Reseta o wizard para o estado original caso limpe os dados futuramente
+    currentWizardStep = 1;
+    document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.progress-dot').forEach(el => el.classList.remove('active'));
+    document.getElementById('step-1').classList.add('active');
+    document.getElementById('dot-1').classList.add('active');
+
     renderizarTelas();
 });
 
 window.abrirModal = function(idModal) { document.getElementById(idModal).classList.add('active'); }
 window.fecharModal = function(idModal) { document.getElementById(idModal).classList.remove('active'); }
-window.fecharModaisFora = function(event, idModal) { if (event.target === document.getElementById(idModal)) fecharModal(idModal); }
+window.fecharModaisFora = function(event, idModal) { 
+    if (event.target === document.getElementById(idModal)) fecharModal(idModal); 
+}
 
+// === VIBE CODER: AUTO-PREENCHIMENTO DE TREINO ===
 window.abrirTreino = function(id, tipo, distCalculada) {
     abrirModal('modal-treino');
     document.getElementById('treino-id').value = id; 
     document.getElementById('input-dist').value = distCalculada;
     
+    const zonas = app.obterZonasKarvonen();
+    let estimativaMin = 45; 
+    if(zonas[tipo] && zonas[tipo].pace !== "-" && !zonas[tipo].pace.includes("Variado") && !zonas[tipo].pace.includes("Máx")) {
+        const paceStr = zonas[tipo].pace.replace('/km', '');
+        const paceSegundos = app._paceParaSegundos(paceStr);
+        estimativaMin = Math.round((paceSegundos * distCalculada) / 60);
+    } else {
+        estimativaMin = Math.round((app.state.atleta.paceBaseSegundos * distCalculada) / 60);
+    }
+    document.getElementById('input-tempo').value = estimativaMin;
+    
+    // Filtra tênis aposentados
     const selectTenis = document.getElementById('input-treino-tenis');
     selectTenis.innerHTML = '';
-    if(app.state.atleta.tenis.length === 0) {
-        selectTenis.innerHTML = '<option value="">Nenhum tênis cadastrado</option>';
+    const tenisAtivos = app.state.atleta.tenis.filter(t => !t.aposentado);
+    
+    if(tenisAtivos.length === 0) {
+        selectTenis.innerHTML = '<option value="">Nenhum tênis ativo</option>';
     } else {
         const idSugerido = app.obterTenisSugerido(tipo);
-        app.state.atleta.tenis.forEach(t => {
+        tenisAtivos.forEach(t => {
             const isSelected = (t.id === idSugerido) ? 'selected' : '';
             selectTenis.innerHTML += `<option value="${t.id}" ${isSelected}>${t.nome}</option>`;
         });
     }
+}
+
+// === VIBE CODER: QUICK ACTION DE TREINO ===
+window.quickLogTreino = function() {
+    document.getElementById('form-treino').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+}
+
+// === VIBE CODER: TOAST DE DOPAMINA ===
+window.showToast = function(msg) {
+    const toast = document.getElementById('toast');
+    toast.innerHTML = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 4000);
 }
 
 document.getElementById('form-treino').addEventListener('submit', (e) => {
@@ -743,7 +815,23 @@ document.getElementById('form-treino').addEventListener('submit', (e) => {
     fecharModal('modal-treino');
     e.target.reset();
     atualizarTelasGlobais();
+
+    // Gatilho do Toast após salvar
+    const ultimoTreino = app.state.treinosRealizados[app.state.treinosRealizados.length - 1];
+    if(ultimoTreino) {
+        showToast(`🔥 Treino salvo! Você gerou <strong>${ultimoTreino.tss} TSS</strong>. Seu Fitness subiu!`);
+    }
 });
+
+// === VIBE CODER: APOSENTAR TÊNIS ===
+window.aposentarTenis = function(id) {
+    if(confirm("Deseja aposentar este tênis? Os KMs ficarão salvos, mas ele sairá das opções de treino.")) {
+        const t = app.state.atleta.tenis.find(x => x.id === id);
+        if(t) t.aposentado = true;
+        app.saveState();
+        atualizarTelasGlobais();
+    }
+}
 
 window.abrirConfig = function() {
     if (!app.state) return;
@@ -767,11 +855,12 @@ document.getElementById('form-config').addEventListener('submit', (e) => {
     atualizarTelasGlobais();
 });
 
-function resetarApp() {
+window.resetarApp = function() {
     if(confirm("ATENÇÃO: Deseja destruir todo o seu histórico e recalibrar o motor?")) {
         localStorage.removeItem(STORAGE_KEY);
         location.reload();
     }
 }
 
+// Iniciar a engine
 renderizarTelas();

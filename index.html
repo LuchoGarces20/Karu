@@ -39,101 +39,79 @@
             <h2>Calibração Fisiológica</h2>
             <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 0.9rem;">Construa sua base de dados esportiva para a inteligência de carga ACWR e projeção de Karvonen.</p>
             
-            <form id="form-setup" class="form-grid">
-                <div class="form-group full-width">
-                    <label>Seu Nome</label>
-                    <input type="text" id="setup-nome" value="Atleta" required>
+            <form id="form-setup">
+                <div class="wizard-progress" style="margin-bottom: 24px;">
+                    <div class="progress-dot active" id="dot-1"></div>
+                    <div class="progress-dot" id="dot-2"></div>
+                    <div class="progress-dot" id="dot-3"></div>
                 </div>
-                <div class="form-group">
-                    <label>Idade (anos)</label>
-                    <input type="number" id="setup-idade" value="30" required>
+
+                <!-- PASSO 1: BIO -->
+                <div class="wizard-step active" id="step-1">
+                    <label class="section-title-highlight">Passo 1/3: Quem é o Atleta?</label>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="setup-nome">Seu Nome</label>
+                        <input type="text" id="setup-nome" value="Atleta" required>
+                    </div>
+                    <div class="form-grid" style="margin-top: 16px;">
+                        <div class="form-group"><label for="setup-idade">Idade</label><input type="number" id="setup-idade" value="30" required></div>
+                        <div class="form-group"><label for="setup-genero">Gênero</label><select id="setup-genero"><option value="M">Masculino</option><option value="F">Feminino</option></select></div>
+                    </div>
+                    <div class="form-grid" style="margin-top: 16px;">
+                        <div class="form-group"><label for="setup-fc-repouso">FC Repouso</label><input type="number" id="setup-fc-repouso" value="60" required></div>
+                        <div class="form-group"><label for="setup-fc-max">FC Máx (Opcional)</label><input type="number" id="setup-fc-max" placeholder="Auto"></div>
+                    </div>
+                    <button type="button" class="btn-primary" style="width: 100%; margin-top: 24px;" onclick="changeWizardStep(1)">Próximo Passo ➔</button>
                 </div>
-                <div class="form-group">
-                    <label>Gênero</label>
-                    <select id="setup-genero">
-                        <option value="M">Masculino</option>
-                        <option value="F">Feminino</option>
-                    </select>
-                </div>
-                
-                <div class="form-group full-width">
-                    <label class="section-title-highlight">🔥 Zonas Cardíacas (Karvonen)</label>
-                </div>
-                <div class="form-group">
-                    <label>FC Repouso (bpm)</label>
-                    <input type="number" id="setup-fc-repouso" value="60" required>
-                </div>
-                <div class="form-group">
-                    <label>FC Máxima (bpm)</label>
-                    <input type="number" id="setup-fc-max" placeholder="Auto (Tanaka)">
-                </div>
-                
-                <div class="form-group full-width">
-                    <label class="section-title-highlight">📅 Agenda Semanal</label>
-                    <label style="color: var(--text-secondary); text-transform: none; font-weight: 500;">Dias de treino (Mínimo 2 dias)</label>
-                    <div class="days-grid">
-                        <input type="checkbox" name="setup-dias" value="1" id="d-seg" class="day-checkbox"> <label class="day-label" for="d-seg">Seg</label>
-                        <input type="checkbox" name="setup-dias" value="2" id="d-ter" class="day-checkbox" checked> <label class="day-label" for="d-ter">Ter</label>
-                        <input type="checkbox" name="setup-dias" value="3" id="d-qua" class="day-checkbox"> <label class="day-label" for="d-qua">Qua</label>
-                        <input type="checkbox" name="setup-dias" value="4" id="d-qui" class="day-checkbox" checked> <label class="day-label" for="d-qui">Qui</label>
-                        <input type="checkbox" name="setup-dias" value="5" id="d-sex" class="day-checkbox"> <label class="day-label" for="d-sex">Sex</label>
-                        <input type="checkbox" name="setup-dias" value="6" id="d-sab" class="day-checkbox"> <label class="day-label" for="d-sab">Sáb</label>
-                        <input type="checkbox" name="setup-dias" value="0" id="d-dom" class="day-checkbox" checked> <label class="day-label" for="d-dom">Dom</label>
+
+                <!-- PASSO 2: ROTINA -->
+                <div class="wizard-step" id="step-2">
+                    <label class="section-title-highlight">Passo 2/3: Motor & Baseline</label>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label>Dias de treino (Mínimo 2)</label>
+                        <div class="days-grid">
+                            <input type="checkbox" name="setup-dias" value="1" id="d-seg" class="day-checkbox"> <label class="day-label" for="d-seg">Seg</label>
+                            <input type="checkbox" name="setup-dias" value="2" id="d-ter" class="day-checkbox" checked> <label class="day-label" for="d-ter">Ter</label>
+                            <input type="checkbox" name="setup-dias" value="3" id="d-qua" class="day-checkbox"> <label class="day-label" for="d-qua">Qua</label>
+                            <input type="checkbox" name="setup-dias" value="4" id="d-qui" class="day-checkbox" checked> <label class="day-label" for="d-qui">Qui</label>
+                            <input type="checkbox" name="setup-dias" value="5" id="d-sex" class="day-checkbox"> <label class="day-label" for="d-sex">Sex</label>
+                            <input type="checkbox" name="setup-dias" value="6" id="d-sab" class="day-checkbox"> <label class="day-label" for="d-sab">Sáb</label>
+                            <input type="checkbox" name="setup-dias" value="0" id="d-dom" class="day-checkbox" checked> <label class="day-label" for="d-dom">Dom</label>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label for="setup-vol-semanal">Volume Semanal Atual (km)</label>
+                        <input type="number" step="0.1" id="setup-vol-semanal" value="20" required>
+                    </div>
+                    <div class="form-grid" style="margin-top: 16px;">
+                        <div class="form-group"><label for="setup-dist-atual">Maior Corrida (km)</label><input type="number" step="0.1" id="setup-dist-atual" value="10" required></div>
+                        <div class="form-group"><label for="setup-tempo-atual">Tempo Dela (min)</label><input type="number" id="setup-tempo-atual" value="65" required></div>
+                    </div>
+                    <div class="form-grid" style="margin-top: 24px;">
+                        <button type="button" class="btn-secondary" style="margin-top: 0;" onclick="changeWizardStep(-1)">Voltar</button>
+                        <button type="button" class="btn-primary" onclick="changeWizardStep(1)">Próximo Passo ➔</button>
                     </div>
                 </div>
-                
-                <div class="form-group full-width">
-                    <label class="section-title-highlight">⚡ Baseline de Carga</label>
-                </div>
-                <div class="form-group full-width">
-                    <label>Volume Semanal Atual (km)</label>
-                    <input type="number" step="0.1" id="setup-vol-semanal" value="20" required>
-                </div>
-                <div class="form-group">
-                    <label>Maior Corrida (km)</label>
-                    <input type="number" step="0.1" id="setup-dist-atual" value="10" required>
-                </div>
-                <div class="form-group">
-                    <label>Tempo Maior Corrida (min)</label>
-                    <input type="number" id="setup-tempo-atual" value="65" required>
-                </div>
-                
-                <!-- NOVO: TÊNIS PRINCIPAL NO ONBOARDING -->
-                <div class="form-group full-width">
-                    <label class="section-title-highlight">👟 Seu Tênis Principal</label>
-                    <label style="color: var(--text-secondary); text-transform: none; font-weight: 500;">Adicione seu tênis principal para iniciarmos o odômetro.</label>
-                </div>
-                <div class="form-group full-width">
-                    <label>Modelo / Nome do Tênis</label>
-                    <input type="text" id="setup-tenis-nome" placeholder="Ex: ASICS Novablast 4" required>
-                </div>
-                <div class="form-group full-width">
-                    <label>Categoria de Uso</label>
-                    <select id="setup-tenis-cat" required>
-                        <option value="versatil" selected>Versátil (Uso para todos os treinos)</option>
-                        <option value="rodagem">Rodagem / Amortecimento (Apenas Longões/Leves)</option>
-                        <option value="velocidade">Velocidade (Apenas Tiros e Prova)</option>
-                    </select>
-                </div>
-                <div class="form-group full-width">
-                    <label class="section-title-highlight">🎯 Objetivo</label>
-                </div>
-                <div class="form-group">
-                    <label>Distância Alvo</label>
-                    <select id="setup-dist-alvo">
-                        <option value="5">5k</option>
-                        <option value="10">10k</option>
-                        <option value="21.1" selected>21.1k</option>
-                        <option value="42.2">42.2k</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Data da Prova</label>
-                    <input type="date" id="setup-data-alvo" required>
-                </div>
-                
-                <div class="form-group full-width" style="margin-top: 16px;">
-                    <button type="submit" class="btn-primary">Iniciar Motor de Treino</button>
+
+                <!-- PASSO 3: META -->
+                <div class="wizard-step" id="step-3">
+                    <label class="section-title-highlight">Passo 3/3: Equipamento & Meta</label>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="setup-tenis-nome">Seu Tênis Principal</label>
+                        <input type="text" id="setup-tenis-nome" placeholder="Ex: ASICS Novablast 4" required>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label for="setup-tenis-cat">Categoria</label>
+                        <select id="setup-tenis-cat" required><option value="versatil" selected>Versátil</option><option value="rodagem">Rodagem</option><option value="velocidade">Velocidade</option></select>
+                    </div>
+                    <div class="form-grid" style="margin-top: 16px;">
+                        <div class="form-group"><label for="setup-dist-alvo">Alvo</label><select id="setup-dist-alvo"><option value="5">5k</option><option value="10">10k</option><option value="21.1" selected>21.1k</option><option value="42.2">42.2k</option></select></div>
+                        <div class="form-group"><label for="setup-data-alvo">Data da Prova</label><input type="date" id="setup-data-alvo" required></div>
+                    </div>
+                    <div class="form-grid" style="margin-top: 24px;">
+                        <button type="button" class="btn-secondary" style="margin-top: 0;" onclick="changeWizardStep(-1)">Voltar</button>
+                        <button type="submit" class="btn-primary">Iniciar Motor 🚀</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -142,6 +120,7 @@
     <!-- TELA 2: TREINO DO DIA -->
     <div id="screen-today" class="screen">
         <div class="today-wrapper" id="ui-hoje"></div>
+
         <div class="card" style="margin-top: 20px;">
             <h2>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
@@ -161,9 +140,10 @@
                 <div class="metric-box"><div class="metric-value" id="val-atl">--</div><div class="metric-label">Fadiga<br><span style="font-size:9px;">(ATL)</span></div></div>
                 <div class="metric-box"><div class="metric-value" id="val-acwr">--</div><div class="metric-label">ACWR<br><span id="label-acwr" style="font-size:9px;">(Risco)</span></div></div>
                 <div class="metric-box"><div class="metric-value" id="val-tsb">--</div><div class="metric-label">Forma<br><span style="font-size:9px;">(TSB)</span></div></div>
-                <!-- NOVA MÉTRICA AQUI -->
                 <div class="metric-box"><div class="metric-value" id="val-monotonia">--</div><div class="metric-label">Monotonia<br><span style="font-size:9px;">(14d)</span></div></div>
             </div>
+            
+            <div id="insight-coach" class="insight-card"></div>
             
             <div class="chart-container" style="margin-top: 24px; position: relative; height: 220px;">
                 <canvas id="chart-carga"></canvas>
@@ -202,11 +182,11 @@
         <h2>Adicionar Tênis</h2>
         <form id="form-tenis" class="form-grid">
             <div class="form-group full-width">
-                <label>Modelo / Nome do Tênis</label>
+                <label for="input-tenis-nome">Modelo / Nome do Tênis</label>
                 <input type="text" id="input-tenis-nome" placeholder="Ex: ASICS Novablast 4" required>
             </div>
             <div class="form-group full-width">
-                <label>Categoria de Uso</label>
+                <label for="input-tenis-cat">Categoria de Uso</label>
                 <select id="input-tenis-cat" required>
                     <option value="rodagem">Rodagem / Amortecimento (Longões)</option>
                     <option value="velocidade">Velocidade / Performance (Tiros e Prova)</option>
@@ -229,33 +209,36 @@
             <input type="hidden" id="treino-id">
             <input type="hidden" id="input-tipo">
             
+            <button type="button" class="btn-secondary full-width" style="background: var(--brand-glow); border-color: var(--brand-accent); color: var(--brand-accent); margin-bottom: 16px;" onclick="window.quickLogTreino()">⚡ Completar como Planejado</button>
+
             <div class="form-group">
-                <label>Distância Real (km)</label>
+                <label for="input-dist">Distância Real (km)</label>
                 <input type="number" step="0.1" id="input-dist" required>
             </div>
             <div class="form-group">
-                <label>Tempo Total (min)</label>
+                <label for="input-tempo">Tempo Total (min)</label>
                 <input type="number" id="input-tempo" placeholder="Ex: 45" required>
             </div>
             
             <div class="form-group full-width">
-                <label>Tênis Utilizado</label>
+                <label for="input-treino-tenis">Tênis Utilizado</label>
                 <select id="input-treino-tenis"></select>
             </div>
+
             <div class="form-group full-width">
-                <label>FC Média (bpm) - Opcional</label>
+                <label for="input-fc">FC Média (bpm) - Opcional</label>
                 <input type="number" id="input-fc" placeholder="Deixe em branco p/ usar sRPE"> 
             </div>
             
             <div class="form-group full-width">
-                <label>Percepção de Esforço (sRPE 1-10)</label>
+                <label for="input-rpe">Percepção de Esforço (sRPE 1-10)</label>
                 <select id="input-rpe">
                     <option value="2">2 - Muito Leve</option>
                     <option value="4">4 - Leve</option>
                     <option value="6" selected>6 - Moderado</option>
                     <option value="8">8 - Difícil</option>
                     <option value="9">9 - Muito Difícil</option>
-                    <option value="10">10 - Esforço Máximo</option>
+                    <option value="10">10 - Esforço Máx</option>
                 </select>
             </div>
             <div class="form-group full-width" style="margin-top: 10px;">
@@ -281,22 +264,22 @@
         <h2>Editar Perfil Fisiológico</h2>
         <form id="form-config" class="form-grid">
             <div class="form-group full-width">
-                <label>Gênero</label>
+                <label for="config-genero">Gênero</label>
                 <select id="config-genero">
                     <option value="M">Masculino</option>
                     <option value="F">Feminino</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>FC Repouso (bpm)</label>
+                <label for="config-fc-repouso">FC Repouso (bpm)</label>
                 <input type="number" id="config-fc-repouso" required>
             </div>
             <div class="form-group">
-                <label>FC Máxima (bpm)</label>
+                <label for="config-fc-max">FC Máxima (bpm)</label>
                 <input type="number" id="config-fc-max" required>
             </div>
             <div class="form-group full-width">
-                <label>Pace de Limiar (MM:SS / km)</label>
+                <label for="config-pace-base">Pace de Limiar (MM:SS / km)</label>
                 <input type="text" id="config-pace-base" placeholder="Ex: 05:30" required pattern="[0-9]{1,2}:[0-9]{2}">
             </div>
             <div class="form-group full-width" style="margin-top: 10px;">
@@ -306,6 +289,9 @@
         </form>
     </div>
 </div>
+
+<div id="toast" class="toast"></div>
+
 <script src="app.js"></script>
 </body>
 </html>
