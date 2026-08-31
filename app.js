@@ -8,13 +8,14 @@ function applyTheme(themeName) {
 const savedTheme = localStorage.getItem('karu_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 applyTheme(savedTheme);
 
-themeToggleBtn.addEventListener('click', () => {
-    applyTheme(body.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
-});
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        applyTheme(body.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    });
+}
 
 const STORAGE_KEY = 'karu_app_v4';
 
-// === FUNÇÕES AUXILIARES DE DATA ===
 function getLocalISODate(d = new Date()) {
     const tzOffset = d.getTimezoneOffset() * 60000;
     return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
@@ -24,6 +25,17 @@ function parseLocalDate(isoString) {
     if(!isoString) return new Date();
     const [y, m, d] = isoString.split('-');
     return new Date(y, m - 1, d);
+}
+
+function obterLimitesDaSemana(dateStr) {
+    const d = parseLocalDate(dateStr);
+    const day = d.getDay() === 0 ? 7 : d.getDay(); 
+    const diffToMon = day - 1;
+    const diffToSun = 7 - day;
+
+    const start = new Date(d); start.setDate(d.getDate() - diffToMon);
+    const end = new Date(d); end.setDate(d.getDate() + diffToSun);
+    return { start: getLocalISODate(start), end: getLocalISODate(end) };
 }
 
 class RunningCoach {
@@ -155,13 +167,56 @@ class RunningCoach {
         const diasTotais = Math.ceil((dataFim - dataInicio) / (1000 * 60 * 60 * 24));
         
         const { longao, tempo, regen } = this.state.atleta.diasTreino;
-        const numRegen = Math.max(1, regen.length);
+        const numRegen = Math.max(0, regen.length);
         
         let idCounter = 0; 
         this.state.plano = [];
         const volSemanalBase = this.state.atleta.volumeSemanalBase;
-        const capSemanalAbsoluto = Math.max(volSemanalBase * 1.15, this.state.prova.distancia * 2.5);
-        let maxLongao = this.state.prova.distancia >= 42.2 ? 34 : this.state.prova.distancia * 0.9;
+        
+        // Teto de volume controlado para evitar picos abruptos em prazos longos
+        const capFisiologico = volSemanalBase * 2.2;
+        const capProva = Math.max(volSemanalBase * 1.15, this.state.prova.distancia * 2.2);
+        const capSemanalAbsoluto = Math.min(capFisiologico, capProva);
+        
+        const maxLongao = this.state.prova.distancia >= 42.2 ? 34 : Math.min(30, this.state.prova.distancia * 0.9);
+        const semanasTotais = Math.ceil((diasTotais + 1) / 7);
+        
+        // Pré-calcula a progressão contínua semana a semana
+        let volumesSemanais = [];
+        let picoVolumeEfetivo = volSemanalBase;
+        let volumeCorrida = volSemanalBase;
+        
+        for (let w = 0; w < semanasTotais; w++) {
+            const semanasParaProva = semanasTotais - w;
+            let fasePlano = "";
+            
+            if (semanasParaProva > 24) {
+                fasePlano = "Manutenção";
+                volumeCorrida = Math.min(volumeCorrida * 1.01, volSemanalBase * 1.2);
+            } else if (semanasParaProva > 12) {
+                fasePlano = "Base Aeróbica";
+                volumeCorrida = Math.min(volumeCorrida * 1.025, capSemanalAbsoluto * 0.8);
+            } else if (semanasParaProva > 2) {
+                fasePlano = "Construção/Especificidade";
+                volumeCorrida = Math.min(volumeCorrida * 1.035, capSemanalAbsoluto);
+                if (volumeCorrida > picoVolumeEfetivo) picoVolumeEfetivo = volumeCorrida;
+            } else {
+                fasePlano = "Polimento";
+            }
+            
+            let volSemanalAtual = volumeCorrida;
+            const ehDeload = (w % 4 === 3) && semanasParaProva > 2;
+            
+            if (semanasParaProva === 2) {
+                volSemanalAtual = picoVolumeEfetivo * 0.60;
+            } else if (semanasParaProva === 1) {
+                volSemanalAtual = picoVolumeEfetivo * 0.40;
+            } else if (ehDeload) {
+                volSemanalAtual *= 0.75;
+            }
+            
+            volumesSemanais.push({ vol: volSemanalAtual, fase: fasePlano, ehDeload: ehDeload, semanasParaProva: semanasParaProva });
+        }
         
         for (let i = 0; i <= diasTotais; i++) {
             let dataTreino = new Date(dataInicio);
@@ -169,14 +224,12 @@ class RunningCoach {
             const diaSemana = dataTreino.getDay() === 0 ? 7 : dataTreino.getDay();
             const diaSemanaNormal = dataTreino.getDay();
             
-            const semanasParaProva = Math.ceil((diasTotais - i) / 7);
             const numeroSemanaAtual = Math.floor(i / 7);
-            const ehDeload = (numeroSemanaAtual % 4 === 3);
-            let volSemanalAtual = Math.min(volSemanalBase * Math.pow(1.05, numeroSemanaAtual), capSemanalAbsoluto);
-            
-            if (ehDeload) volSemanalAtual *= 0.75;
-            if (semanasParaProva === 2) volSemanalAtual *= 0.6;
-            if (semanasParaProva === 1) volSemanalAtual *= 0.4;
+            const infoSemana = volumesSemanais[Math.min(numeroSemanaAtual, volumesSemanais.length - 1)];
+            const volSemanalAtual = infoSemana.vol;
+            const fasePlano = infoSemana.fase;
+            const ehDeload = infoSemana.ehDeload;
+            const semanasParaProva = infoSemana.semanasParaProva;
             
             let tipo = "Descanso", distancia = 0, prescricao = "", estrutura = [];
             
@@ -186,7 +239,8 @@ class RunningCoach {
                 estrutura = [`${distancia}km contínuos com estratégia de prova.`];
             } else if ((diaSemanaNormal === longao || diaSemana === longao) && i !== diasTotais) {
                 tipo = "Longão"; 
-                distancia = Math.min(volSemanalAtual * 0.45, maxLongao); 
+                const pctLongao = numRegen === 0 ? 0.60 : 0.45;
+                distancia = Math.min(volSemanalAtual * pctLongao, maxLongao); 
                 if (semanasParaProva <= 2) prescricao = "Tapering (Polimento). Absorção de carga.";
                 else if (ehDeload) prescricao = "Semana Regenerativa (Deload).";
                 else prescricao = "Construção aeróbica primária (LISS). Segure o ritmo na Z2.";
@@ -194,35 +248,38 @@ class RunningCoach {
             } else if (diaSemanaNormal === tempo || diaSemana === tempo) {
                 const intensos = ["Tempo Run", "Intervalado VO2", "Fartlek", "Subidas"];
                 tipo = intensos[numeroSemanaAtual % 4];
+                const pctTempo = numRegen === 0 ? 0.40 : 0.20;
                 
                 if(tipo === "Tempo Run") {
-                    distancia = Math.max(4, volSemanalAtual * 0.20);
+                    distancia = Math.max(4, volSemanalAtual * pctTempo);
                     prescricao = "Limiar de Lactato. Desconforto controlado.";
                     estrutura = ["Aquecimento: 2km Z1", `Principal: ${Math.max(2, Math.round(distancia-3))}km Z3-Z4`, "Soltura: 1km Z1"];
                 } else if(tipo === "Intervalado VO2") {
-                    distancia = Math.max(5, volSemanalAtual * 0.18);
+                    distancia = Math.max(4, volSemanalAtual * (pctTempo * 0.9));
                     let reps = Math.max(4, Math.round(distancia / 1.5));
                     prescricao = "Aumento do teto aeróbico (VO2 Max).";
                     estrutura = ["Aquecimento: 15min Z1", `Principal: ${reps}x 400m Z5 (Pausa 90s)`, "Soltura: 10min Z1"];
                 } else if(tipo === "Fartlek") {
-                    distancia = Math.max(5, volSemanalAtual * 0.20);
+                    distancia = Math.max(4, volSemanalAtual * pctTempo);
                     prescricao = "Mudanças de ritmo. Feel the pace.";
                     estrutura = ["Aquecimento: 10min Z1", "Principal: 10x (1min Z4 / 1min Z1)", "Soltura: 10min Z1"];
                 } else if(tipo === "Subidas") {
-                    distancia = Math.max(4, volSemanalAtual * 0.15);
+                    distancia = Math.max(4, volSemanalAtual * (pctTempo * 0.8));
                     prescricao = "Força específica e mecânica.";
                     estrutura = ["Aquecimento: 15min Z1", "Principal: 8x 30s rampa Z5 (desce trotando)", "Soltura: 10min Z1"];
                 }
-            } else if (regen.includes(diaSemanaNormal) || regen.includes(diaSemana)) {
+            } else if (numRegen > 0 && (regen.includes(diaSemanaNormal) || regen.includes(diaSemana))) {
                 tipo = "Regenerativo"; 
                 distancia = Math.max(3, (volSemanalAtual * 0.35) / numRegen); 
                 prescricao = "Active Recovery. Flushing do ácido lático.";
                 estrutura = [`${distancia.toFixed(1)}km extremamente leve (Z1)`];
             }
+            
             this.state.plano.push({
                 id: idCounter++, dataISO: getLocalISODate(dataTreino),
                 tipo: tipo, distanciaBase: parseFloat(distancia.toFixed(1)), 
-                prescricao: prescricao, estrutura: estrutura, concluido: false
+                prescricao: prescricao, estrutura: estrutura, concluido: false,
+                fasePlano: fasePlano
             });
         }
     }
@@ -243,10 +300,10 @@ class RunningCoach {
     obterZonasKarvonen() {
         const base = this.state.atleta.paceBaseSegundos;
         const fcMax = this.state.atleta.fcMax;
-        const fcRep = this.state.atleta.fcRepouso;
-        const hrr = fcMax - fcRep;
+        const fcRepouso = this.state.atleta.fcRepouso;
+        const hrr = fcMax - fcRepouso;
         
-        const calcBPM = (minPct, maxPct) => `${Math.round(fcRep + (minPct * hrr))}-${Math.round(fcRep + (maxPct * hrr))} bpm`;
+        const calcBPM = (minPct, maxPct) => `${Math.round(fcRepouso + (minPct * hrr))}-${Math.round(fcRepouso + (maxPct * hrr))} bpm`;
         return {
             "Regenerativo": { pace: `${this._segundosParaPace(base * 1.30)}/km`, fc: `Z1 (${calcBPM(0.50, 0.60)})` },
             "Longão": { pace: `${this._segundosParaPace(base * 1.15)}/km`, fc: `Z2 (${calcBPM(0.60, 0.70)})` },
@@ -323,13 +380,111 @@ class RunningCoach {
             dataISO: treino.dataISO, 
             tss: tss, 
             dist: distReal,
-            tenisId: tenisId 
+            tenisId: tenisId,
+            rpeReal: parseInt(rpe) || 6
         });
         this.recalcularLinhaDoTempo();
         this.state.logs.unshift({ data: new Date().toLocaleDateString('pt-BR'), msg: logMsg });
+        
+        this.analisarFeedbackFisiologico();
         this.saveState();
     }
     
+    analisarFeedbackFisiologico() {
+        const realizados = this.state.treinosRealizados;
+        if (realizados.length < 3) return;
+        
+        const ultimos3 = realizados.slice(-3);
+        let fadigaCritica = 0;
+
+        // 1. Analisa os últimos 3 treinos para checar Overreaching Subjetivo (sRPE alto)
+        ultimos3.forEach(log => {
+            const treino = this.state.plano.find(p => p.id === log.idReferencia);
+            if(!treino) return;
+            
+            let expectedRPE = 5;
+            if(treino.tipo === "Regenerativo") expectedRPE = 3;
+            else if(treino.tipo === "Longão") expectedRPE = 6;
+            else if(["Tempo Run", "Fartlek"].includes(treino.tipo)) expectedRPE = 8;
+            else if(["Intervalado VO2", "Subidas"].includes(treino.tipo)) expectedRPE = 9;
+
+            if (log.rpeReal >= expectedRPE + 2 || log.rpeReal >= 9) {
+                fadigaCritica++;
+            }
+        });
+
+        // 2. Calcula o Risco de Lesão Agudo-Crônico (ACWR)
+        const acwr = this.state.atleta.ctl > 0 ? (this.state.atleta.atl / this.state.atleta.ctl) : 0;
+
+        // 3. O Gatilho Sistêmico: Se há fadiga crítica repetida ou ACWR perigoso
+        if (fadigaCritica >= 3 || acwr > 1.45) {
+            const hojeISO = getLocalISODate();
+            
+            // Cria uma janela de "Proteção" para os próximos 5 dias
+            const dataLimite = new Date();
+            dataLimite.setDate(dataLimite.getDate() + 5);
+            const limiteISO = getLocalISODate(dataLimite);
+            
+            // Busca TODOS os treinos não concluídos dentro desta janela de 5 dias
+            const treinosAfetados = this.state.plano.filter(t => 
+                t.dataISO >= hojeISO && 
+                t.dataISO <= limiteISO && 
+                !t.concluido && 
+                t.tipo !== "Descanso"
+            );
+
+            let intervencaoRealizada = false;
+
+            treinosAfetados.forEach(prox => {
+                // Só ajustamos os que ainda não foram afetados para não sobrepor reduções infinitamente
+                if (!prox.ajustadoPorIA) {
+                    let msgAcao = "";
+
+                    // Se a IA achar treino de velocidade nos próximos 5 dias, ela aniquila a intensidade
+                    if (["Tempo Run", "Intervalado VO2", "Subidas", "Fartlek"].includes(prox.tipo)) {
+                        prox.tipoOriginal = prox.tipo;
+                        prox.tipo = "Regenerativo";
+                        prox.prescricao = "⚠️ OVERREACHING DETECTADO. O Karu bloqueou esta sessão de velocidade para evitar colapso do seu sistema nervoso. Respeite rigorosamente a Z1.";
+                        // Transforma a estrutura e joga a distância lá embaixo (70% do planejado)
+                        const novaDist = Math.max(3, parseFloat((prox.distanciaBase * 0.7).toFixed(1)));
+                        prox.distanciaBase = novaDist;
+                        prox.estrutura = [`${novaDist}km extremamente leve (Z1)`];
+                        msgAcao = `Treino de ${prox.tipoOriginal} convertido em Regenerativo.`;
+                    } 
+                    // Se for um Longão ou Rodagem, fazemos um corte mais severo (30%) para garantir a queda do ATL
+                    else {
+                        const oldDist = prox.distanciaBase;
+                        prox.distanciaBase = parseFloat((oldDist * 0.70).toFixed(1));
+                        prox.prescricao = "⚠️ RISCO DE LESÃO ALTO. Volume do treino cortado em 30% sistemicamente para forçar a queda da sua fadiga aguda (ATL).";
+                        if(prox.estrutura && prox.estrutura.length > 0) {
+                            prox.estrutura[0] = `${prox.distanciaBase}km mantendo a disciplina do pace de recuperação.`;
+                        } else {
+                            prox.estrutura = [`${prox.distanciaBase}km focados em recovery.`];
+                        }
+                        msgAcao = `Volume de ${oldDist}km cortado para ${prox.distanciaBase}km.`;
+                    }
+                    
+                    prox.ajustadoPorIA = true;
+                    intervencaoRealizada = true;
+
+                    // Registra o log individual para cada dia modificado
+                    const [, m, d] = prox.dataISO.split('-');
+                    this.state.logs.unshift({ 
+                        data: new Date().toLocaleDateString('pt-BR'), 
+                        msg: `🚨 <b>Protocolo de Sobrevivência IA (${d}/${m}):</b> ${msgAcao}` 
+                    });
+                }
+            });
+
+            // Dispara o alerta geral para o usuário apenas se alguma mudança nova foi feita hoje
+            if (intervencaoRealizada) {
+                setTimeout(() => { 
+                    showToast("⚠️ Alerta IA: Sobrecarga crítica! Seus próximos 5 dias foram reestruturados."); 
+                }, 4500);
+            }
+        }
+    }
+
     deletarTreino(idRef, dataISO) {
         if(confirm("Remover este treino do histórico? Os dados de carga e a quilometragem do tênis serão recalculados.")) {
             const idx = this.state.treinosRealizados.findIndex(t => t.idReferencia == idRef && t.dataISO === dataISO);
@@ -397,6 +552,40 @@ class RunningCoach {
             status: status
         };
     }
+
+    atualizarSimulador(paceSegundos) {
+        if(!this.state) return;
+        const elPace = document.getElementById('sim-pace-val');
+        const elHr = document.getElementById('sim-hr-val');
+        const elZone = document.getElementById('sim-zone-val');
+        if(!elPace) return;
+
+        elPace.innerText = this._segundosParaPace(paceSegundos);
+
+        const basePace = this.state.atleta.paceBaseSegundos;
+        const hrRep = this.state.atleta.fcRepouso;
+        const hrMax = this.state.atleta.fcMax;
+        const hrr = hrMax - hrRep;
+
+        const ratio = basePace / paceSegundos; 
+        
+        const estHrrPct = ratio * 0.85;
+        let estHr = hrRep + (estHrrPct * hrr);
+        estHr = Math.min(hrMax, Math.max(hrRep, Math.round(estHr)));
+
+        elHr.innerText = estHr;
+
+        const pct = estHrrPct;
+        let zona = "Z1 - Recuperação"; let cor = "var(--brand-accent)";
+        if (pct >= 0.90) { zona = "Z5 - VO2 Máx"; cor = "var(--danger)"; }
+        else if (pct >= 0.80) { zona = "Z4 - Limiar"; cor = "var(--warning)"; }
+        else if (pct >= 0.70) { zona = "Z3 - Tempo"; cor = "var(--warning)"; }
+        else if (pct >= 0.60) { zona = "Z2 - Base (LISS)"; cor = "var(--brand-accent)"; }
+        
+        elZone.innerText = zona;
+        elZone.style.color = cor;
+        elZone.style.borderColor = cor;
+    }
 }
 
 const app = new RunningCoach();
@@ -409,7 +598,6 @@ function formatarDataHoje() {
     return `${dias[d.getDay()]}, ${d.getDate()} ${meses[d.getMonth()]}`;
 }
 
-// === LÓGICA DO WIZARD (ONBOARDING) ===
 let currentWizardStep = 1;
 window.changeWizardStep = function(direction) {
     document.getElementById(`step-${currentWizardStep}`).classList.remove('active');
@@ -436,6 +624,12 @@ function renderizarTelas() {
         btnConfig.style.display = 'flex';
         switchTab('screen-today', 'tab-today');
         atualizarTelasGlobais();
+
+        const simSlider = document.getElementById('sim-slider');
+        if(simSlider) {
+            simSlider.value = app.state.atleta.paceBaseSegundos;
+            app.atualizarSimulador(simSlider.value);
+        }
     }
 }
 
@@ -521,12 +715,52 @@ function atualizarTelasGlobais() {
     const zonas = app.obterZonasKarvonen();
     const uiHoje = document.getElementById('ui-hoje');
     
+    let themeColor = 'var(--brand-accent)';
+    let themeGlow = 'var(--brand-glow)';
+    
+    if (treinoHoje && !treinoHoje.concluido && treinoHoje.tipo !== "Descanso") {
+        if (["Tempo Run", "Fartlek", "PROVA ALVO"].includes(treinoHoje.tipo)) {
+            themeColor = 'var(--warning)'; 
+            themeGlow = 'rgba(245, 158, 11, 0.2)';
+        } else if (["Intervalado VO2", "Subidas"].includes(treinoHoje.tipo)) {
+            themeColor = 'var(--danger)'; 
+            themeGlow = 'rgba(239, 68, 68, 0.2)';
+        }
+    }
+    uiHoje.style.setProperty('--theme-color', themeColor);
+    uiHoje.style.setProperty('--theme-glow', themeGlow);
+
+    const { start: weekStart, end: weekEnd } = obterLimitesDaSemana(hojeISO);
+    
+    let volPlanejadoSemana = 0;
+    app.state.plano.forEach(t => {
+        if (t.dataISO >= weekStart && t.dataISO <= weekEnd) volPlanejadoSemana += (t.distanciaBase * app.state.atleta.multiplicadorVolume);
+    });
+    
+    let volRealizadoSemana = 0;
+    app.state.treinosRealizados.forEach(t => {
+        if (t.dataISO >= weekStart && t.dataISO <= weekEnd) volRealizadoSemana += t.dist;
+    });
+
+    const percentualVolume = volPlanejadoSemana > 0 ? Math.min(100, (volRealizadoSemana / volPlanejadoSemana) * 100) : 0;
+    const progressHtml = `
+        <div class="weekly-progress-container">
+            <div class="weekly-progress-header">
+                <span>Meta Semanal</span>
+                <span>${volRealizadoSemana.toFixed(1)} / ${volPlanejadoSemana.toFixed(1)} km</span>
+            </div>
+            <div class="weekly-progress-bar">
+                <div class="weekly-progress-fill" style="width: ${percentualVolume}%;"></div>
+            </div>
+        </div>
+    `;
+
     if (!treinoHoje) {
         uiHoje.innerHTML = `<div class="today-date">${formatarDataHoje()}</div><h2 class="today-type">Ciclo Concluído</h2><p class="today-desc">Jornada finalizada.</p>`;
     } else if (treinoHoje.concluido) {
-        uiHoje.innerHTML = `<div class="today-date">${formatarDataHoje()}</div><h2 class="today-type">${treinoHoje.tipo}</h2><div class="today-done"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><p class="today-desc">Sessão finalizada. Foco na recuperação.</p>`;
+        uiHoje.innerHTML = `<div class="today-date">${formatarDataHoje()}</div><h2 class="today-type">${treinoHoje.tipo}</h2><div class="today-done"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div><p class="today-desc">Sessão finalizada. Foco na recuperação.</p>${progressHtml}`;
     } else if (treinoHoje.tipo === "Descanso") {
-        uiHoje.innerHTML = `<div class="today-date">${formatarDataHoje()}</div><h2 class="today-type">Recovery</h2><div class="today-rest"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></div><p class="today-desc">O ganho de performance ocorre no repouso.</p>`;
+        uiHoje.innerHTML = `<div class="today-date">${formatarDataHoje()}</div><h2 class="today-type">Recovery</h2><div class="today-rest"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></div><p class="today-desc">O ganho de performance ocorre no repouso.</p>${progressHtml}`;
     } else {
         const paceAlvo = zonas[treinoHoje.tipo]?.pace || '-';
         const fcAlvo = zonas[treinoHoje.tipo]?.fc || '-';
@@ -545,10 +779,13 @@ function atualizarTelasGlobais() {
             if(tFound) nomeTenisSugerido = tFound.nome;
         }
         let hintTenis = app.state.atleta.tenis.length > 0 
-            ? `<div style="margin-bottom: 20px; font-size: 0.82rem; color: var(--brand-accent); font-weight: 700;">Tênis Recomendado: <span style="color: var(--text-primary); font-weight: 600;">${nomeTenisSugerido}</span></div>`
+            ? `<div style="margin-bottom: 20px; font-size: 0.82rem; color: var(--theme-color); font-weight: 700; transition: color 0.5s ease;">Tênis Recomendado: <span style="color: var(--text-primary); font-weight: 600;">${nomeTenisSugerido}</span></div>`
             : '';
             
+        const nomeFase = treinoHoje.fasePlano || 'Ciclo de Treino';
+            
         uiHoje.innerHTML = `
+            <div class="phase-badge">${nomeFase}</div>
             <div class="today-date">${formatarDataHoje()}</div>
             <h2 class="today-type">${treinoHoje.tipo}</h2>
             <div class="today-distance">${distCalculada}<span>km</span></div>
@@ -563,7 +800,13 @@ function atualizarTelasGlobais() {
             
             <p class="today-desc" style="font-size:0.85rem;">"${treinoHoje.prescricao}"</p>
             <button class="btn-giant" onclick="abrirTreino(${treinoHoje.id}, '${treinoHoje.tipo}', ${distCalculada})">Registrar Treino</button>
+            ${progressHtml}
         `;
+        
+        setTimeout(() => {
+            const fill = document.querySelector('.weekly-progress-fill');
+            if(fill) fill.style.width = `${percentualVolume}%`;
+        }, 50);
     }
     
     const ctl = app.state.atleta.ctl;
@@ -598,7 +841,6 @@ function atualizarTelasGlobais() {
         else if (foster.monotonia > 0) monoEl.classList.add('positive');
     }
 
-    // === VIBE CODER: AI COACH INSIGHT ===
     const insightEl = document.getElementById('insight-coach');
     if (insightEl) {
         let insightMsg = "<strong>🤖 Coach Karu:</strong> Mantenha a consistência. Seu corpo está respondendo perfeitamente ao plano.";
@@ -609,7 +851,6 @@ function atualizarTelasGlobais() {
         insightEl.innerHTML = insightMsg;
     }
 
-    // === VIBE CODER: GARAGEM DE TÊNIS (COM APOSENTADORIA) ===
     const uiGaragem = document.getElementById('ui-garagem');
     if (app.state.atleta.tenis.length === 0) {
         uiGaragem.innerHTML = '<p style="color: var(--text-tertiary); font-size: 0.85rem;">Adicione seus tênis para rastrear o desgaste.</p>';
@@ -670,43 +911,132 @@ function atualizarTelasGlobais() {
         const ehDescanso = treino.tipo === "Descanso";
         const [, m, d] = treino.dataISO.split('-');
         
-        let html = `<div class="day-card ${ehHoje ? 'today' : ''} ${treino.concluido ? 'done' : ''}">
-            <div class="day-info">
-                <div class="day-date">${ehHoje ? 'HOJE' : `${d}/${m}`}</div>
-                <div class="day-title">${treino.tipo}</div>
-                ${!ehDescanso ? `<div class="day-details">Zonas: ${zonas[treino.tipo]?.fc || '-'}</div>` : ``}
-            </div>`;
-        if (treino.concluido) html += `<div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--brand-accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div>`;
-        html += `</div>`;
-        htmlCalendario += html;
+        const distCalculada = parseFloat((treino.distanciaBase * app.state.atleta.multiplicadorVolume).toFixed(1));
+        const paceAlvo = zonas[treino.tipo]?.pace || '-';
+        const fcAlvo = zonas[treino.tipo]?.fc || '-';
+
+        let htmlEstrutura = '';
+        if (treino.estrutura && treino.estrutura.length > 0) {
+            htmlEstrutura = `<div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 12px; display: flex; flex-direction: column; gap: 6px;">` +
+                treino.estrutura.map(b => `<div style="padding-left:10px; border-left:2px solid var(--brand-solid);">${b}</div>`).join('') +
+            `</div>`;
+        }
+
+        const nomeFaseCalendario = treino.fasePlano || 'Ciclo Ativo';
+
+        let iconStatus = treino.concluido 
+            ? `<div><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg></div>` 
+            : `<svg class="day-chevron" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
+
+        let actionBtn = !treino.concluido 
+            ? `<button class="btn-outline-small" onclick="event.stopPropagation(); abrirModalReagendar(${treino.id}, '${treino.dataISO}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Mudar Dia do Treino</button>` 
+            : '';
+
+        htmlCalendario += `
+        <div class="day-card ${ehHoje ? 'today' : ''} ${treino.concluido ? 'done' : ''}" onclick="this.classList.toggle('expanded')">
+            <div class="day-card-header">
+                <div class="day-info">
+                    <div class="day-date">${ehHoje ? 'HOJE' : `${d}/${m}`}</div>
+                    <div class="day-title">${treino.tipo}</div>
+                    <div class="day-details">${nomeFaseCalendario} ${!ehDescanso ? `• Zonas: ${fcAlvo}` : ''}</div>
+                </div>
+                ${iconStatus}
+            </div>
+
+            <div class="day-expanded-content" onclick="event.stopPropagation()">
+                ${!ehDescanso ? `
+                <div class="expanded-grid">
+                    <div class="expanded-data-box"><span>Volume Base</span><strong>${distCalculada} km</strong></div>
+                    <div class="expanded-data-box"><span>Pace Alvo</span><strong>${paceAlvo}</strong></div>
+                </div>
+                ${htmlEstrutura}
+                <p style="font-size: 0.8rem; color: var(--text-tertiary); margin-top: 14px; font-style: italic;">"${treino.prescricao}"</p>
+                ` : `<p style="font-size: 0.85rem; color: var(--text-secondary);">Dia reservado para adaptação fisiológica e flushing de metabólitos.</p>`}
+                
+                ${actionBtn}
+            </div>
+        </div>`;
     });
     uiCalendario.innerHTML = htmlCalendario;
 }
 
+let semanasCarregadasMacrociclo = 0;
+const SEMANAS_POR_PAGINA = 4;
+
 window.abrirPlanoCompleto = function() {
     if(!app.state) return;
+    semanasCarregadasMacrociclo = 0;
+    
     const container = document.getElementById('container-plano-completo');
+    container.innerHTML = '';
     
-    let semanaAtualNum = 1;
-    let htmlSemana = `<div class="week-group"><div class="week-header"><span>Semana ${semanaAtualNum}</span></div>`;
+    const listaDiv = document.createElement('div');
+    listaDiv.id = 'lista-macrociclo';
+    container.appendChild(listaDiv);
     
-    app.state.plano.forEach((treino, index) => {
-        const [, m, d] = treino.dataISO.split('-');
-        if (index > 0 && index % 7 === 0) {
-            semanaAtualNum++;
-            htmlSemana += `</div><div class="week-group"><div class="week-header"><span>Semana ${semanaAtualNum}</span></div>`;
+    const btnCarregar = document.createElement('button');
+    btnCarregar.className = 'btn-secondary';
+    btnCarregar.id = 'btn-carregar-mais-macro';
+    btnCarregar.innerText = 'Carregar mais semanas';
+    btnCarregar.style.marginTop = '16px';
+    btnCarregar.onclick = carregarMaisSemanasMacrociclo;
+    
+    container.appendChild(btnCarregar);
+    
+    carregarMaisSemanasMacrociclo();
+    abrirModal('modal-plano');
+}
+
+function carregarMaisSemanasMacrociclo() {
+    if(!app.state) return;
+    const listaDiv = document.getElementById('lista-macrociclo');
+    const btnCarregar = document.getElementById('btn-carregar-mais-macro');
+    
+    const diasTotaisDoPlano = app.state.plano.length;
+    const diaInicial = semanasCarregadasMacrociclo * 7;
+    const diaFinal = Math.min(diaInicial + (SEMANAS_POR_PAGINA * 7), diasTotaisDoPlano);
+    
+    if(diaInicial >= diasTotaisDoPlano) return;
+    
+    let htmlChunk = "";
+    let semanaAtualNum = semanasCarregadasMacrociclo + 1;
+    let treinosDaSemana = 0;
+    
+    for(let i = diaInicial; i < diaFinal; i++) {
+        const treino = app.state.plano[i];
+        if(!treino) continue;
+        
+        if (treinosDaSemana === 0) {
+             htmlChunk += `<div class="week-group"><div class="week-header"><span>Semana ${semanaAtualNum}</span></div>`;
         }
-        htmlSemana += `
-            <div class="day-card ${treino.concluido ? 'done' : ''}" style="margin-bottom:6px; padding:12px 14px;">
-                <div class="day-info">
-                    <div class="day-date">${d}/${m}</div>
-                    <div class="day-title" style="font-size: 0.9rem;">${treino.tipo}</div>
+        
+        const [, m, d] = treino.dataISO.split('-');
+        
+        htmlChunk += `
+            <div class="day-card ${treino.concluido ? 'done' : ''}" style="margin-bottom:6px; padding:12px 14px; cursor: default;">
+                <div class="day-card-header">
+                    <div class="day-info">
+                        <div class="day-date">${d}/${m}</div>
+                        <div class="day-title" style="font-size: 0.9rem;">${treino.tipo} <span style="font-size: 0.75rem; color: var(--text-tertiary); font-weight: normal; margin-left: 6px;">${treino.distanciaBase} km</span></div>
+                    </div>
                 </div>
             </div>`;
-    });
-    htmlSemana += `</div>`;
-    container.innerHTML = htmlSemana;
-    abrirModal('modal-plano');
+            
+        treinosDaSemana++;
+        
+        if (treinosDaSemana === 7 || i === diaFinal - 1 || i === diasTotaisDoPlano - 1) {
+            htmlChunk += `</div>`;
+            semanaAtualNum++;
+            treinosDaSemana = 0;
+        }
+    }
+    
+    listaDiv.insertAdjacentHTML('beforeend', htmlChunk);
+    semanasCarregadasMacrociclo += SEMANAS_POR_PAGINA;
+    
+    if (semanasCarregadasMacrociclo * 7 >= diasTotaisDoPlano) {
+        btnCarregar.style.display = 'none';
+    }
 }
 
 document.getElementById('form-tenis').addEventListener('submit', (e) => {
@@ -725,6 +1055,15 @@ document.getElementById('form-setup').addEventListener('submit', (e) => {
     const dias = Array.from(document.querySelectorAll('input[name="setup-dias"]:checked')).map(el => parseInt(el.value));
     if (dias.length < 2) return alert("Selecione pelo menos 2 dias.");
     
+    const dataAlvoStr = document.getElementById('setup-data-alvo').value;
+    const dAlvo = parseLocalDate(dataAlvoStr);
+    const diasAteProva = Math.ceil((dAlvo - new Date()) / (1000 * 60 * 60 * 24));
+    
+    if (diasAteProva < 21) {
+        const confirmar = confirm("⚠️ Atenção! Sua prova é em menos de 3 semanas.\n\nO Karu não terá tempo para construir aptidão física (Fitness) e entrará diretamente na fase de Polimento (redução de volume) para descansar suas pernas.\n\nDeseja continuar mesmo assim?");
+        if (!confirmar) return;
+    }
+    
     app.initSetup({
         nome: document.getElementById('setup-nome').value, 
         idade: parseInt(document.getElementById('setup-idade').value),
@@ -740,7 +1079,7 @@ document.getElementById('form-setup').addEventListener('submit', (e) => {
         tenisNome: document.getElementById('setup-tenis-nome').value,
         tenisCat: document.getElementById('setup-tenis-cat').value
     });
-    // Reseta o wizard para o estado original caso limpe os dados futuramente
+    
     currentWizardStep = 1;
     document.querySelectorAll('.wizard-step').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.progress-dot').forEach(el => el.classList.remove('active'));
@@ -756,7 +1095,6 @@ window.fecharModaisFora = function(event, idModal) {
     if (event.target === document.getElementById(idModal)) fecharModal(idModal); 
 }
 
-// === VIBE CODER: AUTO-PREENCHIMENTO DE TREINO ===
 window.abrirTreino = function(id, tipo, distCalculada) {
     abrirModal('modal-treino');
     document.getElementById('treino-id').value = id; 
@@ -773,7 +1111,6 @@ window.abrirTreino = function(id, tipo, distCalculada) {
     }
     document.getElementById('input-tempo').value = estimativaMin;
     
-    // Filtra tênis aposentados
     const selectTenis = document.getElementById('input-treino-tenis');
     selectTenis.innerHTML = '';
     const tenisAtivos = app.state.atleta.tenis.filter(t => !t.aposentado);
@@ -789,12 +1126,6 @@ window.abrirTreino = function(id, tipo, distCalculada) {
     }
 }
 
-// === VIBE CODER: QUICK ACTION DE TREINO ===
-window.quickLogTreino = function() {
-    document.getElementById('form-treino').dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-}
-
-// === VIBE CODER: TOAST DE DOPAMINA ===
 window.showToast = function(msg) {
     const toast = document.getElementById('toast');
     toast.innerHTML = msg;
@@ -816,14 +1147,12 @@ document.getElementById('form-treino').addEventListener('submit', (e) => {
     e.target.reset();
     atualizarTelasGlobais();
 
-    // Gatilho do Toast após salvar
     const ultimoTreino = app.state.treinosRealizados[app.state.treinosRealizados.length - 1];
     if(ultimoTreino) {
         showToast(`🔥 Treino salvo! Você gerou <strong>${ultimoTreino.tss} TSS</strong>. Seu Fitness subiu!`);
     }
 });
 
-// === VIBE CODER: APOSENTAR TÊNIS ===
 window.aposentarTenis = function(id) {
     if(confirm("Deseja aposentar este tênis? Os KMs ficarão salvos, mas ele sairá das opções de treino.")) {
         const t = app.state.atleta.tenis.find(x => x.id === id);
@@ -862,5 +1191,101 @@ window.resetarApp = function() {
     }
 }
 
-// Iniciar a engine
+window.abrirModalReagendar = function(treinoId, dataAtualISO) {
+    document.getElementById('reagendar-id').value = treinoId;
+    document.getElementById('reagendar-data').value = dataAtualISO;
+    abrirModal('modal-reagendar');
+}
+
+document.getElementById('form-reagendar').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const treinoId = parseInt(document.getElementById('reagendar-id').value);
+    const novaDataISO = document.getElementById('reagendar-data').value;
+
+    const treino = app.state.plano.find(t => t.id === treinoId);
+    if(treino) {
+        const dataAntiga = treino.dataISO;
+        treino.dataISO = novaDataISO;
+
+        app.state.plano.sort((a, b) => new Date(a.dataISO) - new Date(b.dataISO));
+
+        const formatoBrAntiga = dataAntiga.split('-').reverse().join('/');
+        const formatoBrNova = novaDataISO.split('-').reverse().join('/');
+        app.state.logs.unshift({ 
+            data: new Date().toLocaleDateString('pt-BR'), 
+            msg: `Agenda modificada: O ${treino.tipo} passou do dia ${formatoBrAntiga.substring(0,5)} para ${formatoBrNova.substring(0,5)}.` 
+        });
+
+        app.saveState();
+        fecharModal('modal-reagendar');
+        atualizarTelasGlobais();
+        showToast("Treino reagendado com sucesso! 🗓️");
+    }
+});
+
+window.abrirEstrategiaProva = function() {
+    if(!app.state) return;
+    document.getElementById('est-distancia').value = app.state.prova.distancia;
+    const minutosIdeais = Math.round((app.state.atleta.paceBaseSegundos * app.state.prova.distancia) / 60);
+    const h = Math.floor(minutosIdeais / 60).toString().padStart(2, '0');
+    const m = (minutosIdeais % 60).toString().padStart(2, '0');
+    document.getElementById('est-tempo').value = `${h}:${m}`;
+    
+    document.getElementById('resultado-estrategia').style.display = 'none';
+    abrirModal('modal-estrategia');
+}
+
+document.getElementById('form-estrategia').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const dist = parseFloat(document.getElementById('est-distancia').value);
+    const tempoStr = document.getElementById('est-tempo').value;
+    const tatic = document.getElementById('est-tatica').value;
+    
+    const partes = tempoStr.split(':');
+    const hh = parseInt(partes[0]) || 0;
+    const mm = parseInt(partes[1]) || 0;
+    
+    const totalSegundos = (hh * 3600) + (mm * 60);
+    
+    if (isNaN(totalSegundos) || totalSegundos <= 0 || isNaN(dist) || dist <= 0) return;
+    
+    const paceAlvoSeg = Math.round(totalSegundos / dist);
+    
+    document.getElementById('res-pace-alvo').innerHTML = `${app._segundosParaPace(paceAlvoSeg)}<span style="font-size: 1rem; color: var(--text-tertiary);">/km</span>`;
+    
+    let htmlBlocos = "";
+    
+    if (tatic === "negative") {
+        const pace1 = app._segundosParaPace(paceAlvoSeg + 10);
+        const km1 = (dist * 0.3).toFixed(1);
+        htmlBlocos += `<div class="expanded-data-box" style="border-left: 3px solid var(--text-tertiary);"><span>Do km 0 ao ${km1} (Conservador)</span><strong>${pace1} /km</strong><p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">Segure a emoção. Poupe glicogênio e deixe os apressados passarem (+10s do alvo).</p></div>`;
+        
+        const pace2 = app._segundosParaPace(paceAlvoSeg);
+        const km2 = (dist * 0.75).toFixed(1);
+        htmlBlocos += `<div class="expanded-data-box" style="border-left: 3px solid var(--warning);"><span>Do km ${km1} ao ${km2} (Cruzeiro)</span><strong>${pace2} /km</strong><p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">Entre no ritmo. Concentre-se na respiração e economize energia.</p></div>`;
+        
+        const pace3 = app._segundosParaPace(paceAlvoSeg - 12);
+        htmlBlocos += `<div class="expanded-data-box" style="border-left: 3px solid var(--brand-accent); background: var(--brand-glow);"><span>Do km ${km2} até a Chegada (Ataque)</span><strong>${pace3} /km</strong><p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">Negative split! Deixe tudo na pista, você tem energia de sobra (-12s do alvo).</p></div>`;
+    } else {
+        htmlBlocos += `<div class="expanded-data-box" style="border-left: 3px solid var(--brand-accent);"><span>Do Km 0 ao Km ${dist}</span><strong>${app._segundosParaPace(paceAlvoSeg)} /km</strong><p style="font-size:0.75rem; color:var(--text-secondary); margin-top:4px;">Seja um relógio suíço. Crave esse pace a cada quilômetro.</p></div>`;
+    }
+    
+    document.getElementById('res-blocos').innerHTML = htmlBlocos;
+    
+    const tempoTotalMins = totalSegundos / 60;
+    let nutricaoText = "";
+    
+    if (tempoTotalMins <= 50) {
+        nutricaoText = "Prova rápida. Foque apenas em hidratação nos postos de água. Seu glicogênio muscular dá conta do recado.";
+    } else if (tempoTotalMins <= 90) {
+        nutricaoText = "Leve <b>1 carbogel</b> para tomar por volta do minuto 40. Tome com pequenos goles de água.";
+    } else {
+        const qtdGeis = Math.floor(tempoTotalMins / 40);
+        nutricaoText = `Leve <b>${qtdGeis} carbogeis</b>. Tome 1 sachê a cada 40-45 min. Em provas assim longas, considere também cápsulas de sal.`;
+    }
+    
+    document.getElementById('res-nutricao').innerHTML = nutricaoText;
+    document.getElementById('resultado-estrategia').style.display = 'block';
+});
+
 renderizarTelas();
