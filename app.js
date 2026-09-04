@@ -3,9 +3,9 @@ const body = document.body;
 
 function applyTheme(themeName) {
     body.setAttribute('data-theme', themeName);
-    localStorage.setItem('karu_theme', themeName);
+    localStorage.setItem('trote_theme', themeName);
 }
-const savedTheme = localStorage.getItem('karu_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+const savedTheme = localStorage.getItem('trote_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 applyTheme(savedTheme);
 
 if (themeToggleBtn) {
@@ -14,7 +14,7 @@ if (themeToggleBtn) {
     });
 }
 
-const STORAGE_KEY = 'karu_app_v4';
+const STORAGE_KEY = 'trote_app_v4';
 
 function getLocalISODate(d = new Date()) {
     const tzOffset = d.getTimezoneOffset() * 60000;
@@ -177,8 +177,18 @@ class RunningCoach {
         const capProva = Math.max(volSemanalBase * 1.15, this.state.prova.distancia * 2.2);
         const capSemanalAbsoluto = Math.min(capFisiologico, capProva);
         
-        const maxLongao = this.state.prova.distancia >= 42.2 ? 34 : Math.min(30, this.state.prova.distancia * 0.9);
-        const semanasTotais = Math.ceil((diasTotais + 1) / 7);
+let maxLongao;
+const distAlvo = this.state.prova.distancia;
+
+if (distAlvo >= 42.2) {
+    maxLongao = 34;
+} else if (distAlvo >= 21.1) {
+    maxLongao = 22;
+} else if (distAlvo > 5) {
+    maxLongao = 14; // Teto de 14km para provas de 10k, ideal para ganho de base
+} else {
+    maxLongao = 10; // Teto de 10km para provas de 5k
+}        const semanasTotais = Math.ceil((diasTotais + 1) / 7);
         
         let volumesSemanais = [];
         let picoVolumeEfetivo = volSemanalBase;
@@ -333,7 +343,6 @@ class RunningCoach {
                 } else if(tipo === "Tempo Run") {
                     distancia = Math.max(4, volSemanalAtual * pctTempo);
                     
-                    // Alterna entre Tempo Run Contínuo e Cruise Intervals
                     if (numeroSemanaAtual % 2 === 0) {
                         prescricao = "Limiar de Lactato. Desconforto controlado em esforço sustentado.";
                         estrutura = ["Aquecimento: 2km Z1", `Principal: ${Math.max(2, Math.round(distancia-3))}km Z3-Z4`, "Soltura: 1km Z1"];
@@ -358,7 +367,6 @@ class RunningCoach {
                 distancia = Math.max(3, (volSemanalAtual * 0.35) / numRegen); 
                 prescricao = "Active Recovery e soltura muscular com acelerações leves no final.";
                 
-                // Inclui Strides (Acelerações) nas semanas de treino ativo
                 if (fasePlano !== "Polimento") {
                     estrutura = [
                         `${distancia.toFixed(1)}km extremamente leves em Z1`,
@@ -491,7 +499,6 @@ class RunningCoach {
         const ultimos3 = realizados.slice(-3);
         let fadigaCritica = 0;
 
-        // 1. Analisa os últimos 3 treinos para checar Overreaching Subjetivo (sRPE alto)
         ultimos3.forEach(log => {
             const treino = this.state.plano.find(p => p.id === log.idReferencia);
             if(!treino) return;
@@ -507,19 +514,14 @@ class RunningCoach {
             }
         });
 
-        // 2. Calcula o Risco de Lesão Agudo-Crônico (ACWR)
         const acwr = this.state.atleta.ctl > 0 ? (this.state.atleta.atl / this.state.atleta.ctl) : 0;
 
-        // 3. O Gatilho Sistêmico: Se há fadiga crítica repetida ou ACWR perigoso
         if (fadigaCritica >= 3 || acwr > 1.45) {
             const hojeISO = getLocalISODate();
-            
-            // Cria uma janela de "Proteção" para os próximos 5 dias
             const dataLimite = new Date();
             dataLimite.setDate(dataLimite.getDate() + 5);
             const limiteISO = getLocalISODate(dataLimite);
             
-            // Busca TODOS os treinos não concluídos dentro desta janela de 5 dias
             const treinosAfetados = this.state.plano.filter(t => 
                 t.dataISO >= hojeISO && 
                 t.dataISO <= limiteISO && 
@@ -530,23 +532,18 @@ class RunningCoach {
             let intervencaoRealizada = false;
 
             treinosAfetados.forEach(prox => {
-                // Só ajustamos os que ainda não foram afetados para não sobrepor reduções infinitamente
                 if (!prox.ajustadoPorIA) {
                     let msgAcao = "";
 
-                    // Se a IA achar treino de velocidade nos próximos 5 dias, ela aniquila a intensidade
                     if (["Tempo Run", "Intervalado VO2", "Subidas", "Fartlek"].includes(prox.tipo)) {
                         prox.tipoOriginal = prox.tipo;
                         prox.tipo = "Regenerativo";
-                        prox.prescricao = "⚠️ OVERREACHING DETECTADO. O Karu bloqueou esta sessão de velocidade para evitar colapso do seu sistema nervoso. Respeite rigorosamente a Z1.";
-                        // Transforma a estrutura e joga a distância lá embaixo (70% do planejado)
+                        prox.prescricao = "⚠️ OVERREACHING DETECTADO. O Trote bloqueou esta sessão de velocidade para evitar colapso do seu sistema nervoso. Respeite rigorosamente a Z1.";
                         const novaDist = Math.max(3, parseFloat((prox.distanciaBase * 0.7).toFixed(1)));
                         prox.distanciaBase = novaDist;
                         prox.estrutura = [`${novaDist}km extremamente leve (Z1)`];
                         msgAcao = `Treino de ${prox.tipoOriginal} convertido em Regenerativo.`;
-                    } 
-                    // Se for um Longão ou Rodagem, fazemos um corte mais severo (30%) para garantir a queda do ATL
-                    else {
+                    } else {
                         const oldDist = prox.distanciaBase;
                         prox.distanciaBase = parseFloat((oldDist * 0.70).toFixed(1));
                         prox.prescricao = "⚠️ RISCO DE LESÃO ALTO. Volume do treino cortado em 30% sistemicamente para forçar a queda da sua fadiga aguda (ATL).";
@@ -561,7 +558,6 @@ class RunningCoach {
                     prox.ajustadoPorIA = true;
                     intervencaoRealizada = true;
 
-                    // Registra o log individual para cada dia modificado
                     const [, m, d] = prox.dataISO.split('-');
                     this.state.logs.unshift({ 
                         data: new Date().toLocaleDateString('pt-BR'), 
@@ -570,7 +566,6 @@ class RunningCoach {
                 }
             });
 
-            // Dispara o alerta geral para o usuário apenas se alguma mudança nova foi feita hoje
             if (intervencaoRealizada) {
                 setTimeout(() => { 
                     showToast("⚠️ Alerta IA: Sobrecarga crítica! Seus próximos 5 dias foram reestruturados."); 
@@ -937,10 +932,10 @@ function atualizarTelasGlobais() {
 
     const insightEl = document.getElementById('insight-coach');
     if (insightEl) {
-        let insightMsg = "<strong>🤖 Coach Karu:</strong> Mantenha a consistência. Seu corpo está respondendo perfeitamente ao plano.";
-        if (acwr > 1.5) insightMsg = "<strong>⚠️ Coach Karu:</strong> Seu corpo acumulou muita fadiga rápido demais (ACWR alto). Reduza a intensidade e foque em recovery.";
-        else if (tsb > 10) insightMsg = "<strong>🚀 Coach Karu:</strong> Você está fresco e recuperado! Excelente janela metabólica para quebrar recordes no treino de velocidade.";
-        else if (tsb < -20) insightMsg = "<strong>📉 Coach Karu:</strong> Fadiga alta detectada. Priorize sono, hidratação e respeite rigorosamente a zona do seu próximo regenerativo.";
+        let insightMsg = "<strong>🤖 Coach Trote:</strong> Mantenha a consistência. Seu corpo está respondendo perfeitamente ao plano.";
+        if (acwr > 1.5) insightMsg = "<strong>⚠️ Coach Trote:</strong> Seu corpo acumulou muita fadiga rápido demais (ACWR alto). Reduza a intensidade e foque em recovery.";
+        else if (tsb > 10) insightMsg = "<strong>🚀 Coach Trote:</strong> Você está fresco e recuperado! Excelente janela metabólica para quebrar recordes no treino de velocidade.";
+        else if (tsb < -20) insightMsg = "<strong>📉 Coach Trote:</strong> Fadiga alta detectada. Priorize sono, hidratação e respeite rigorosamente a zona do seu próximo regenerativo.";
         
         insightEl.innerHTML = insightMsg;
     }
@@ -1154,7 +1149,7 @@ document.getElementById('form-setup').addEventListener('submit', (e) => {
     const diasAteProva = Math.ceil((dAlvo - new Date()) / (1000 * 60 * 60 * 24));
     
     if (diasAteProva < 21) {
-        const confirmar = confirm("⚠️ Atenção! Sua prova é em menos de 3 semanas.\n\nO Karu não terá tempo para construir aptidão física (Fitness) e entrará diretamente na fase de Polimento (redução de volume) para descansar suas pernas.\n\nDeseja continuar mesmo assim?");
+        const confirmar = confirm("⚠️ Atenção! Sua prova é em menos de 3 semanas.\n\nO Trote não terá tempo para construir aptidão física (Fitness) e entrará diretamente na fase de Polimento (redução de volume) para descansar suas pernas.\n\nDeseja continuar mesmo assim?");
         if (!confirmar) return;
     }
     

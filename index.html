@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Karu | Premium AI Coach</title>
+    <title>Trote | Premium AI Coach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
@@ -14,8 +14,8 @@
 <div class="app-container">
     <header>
         <div class="brand-logo">
-            <div class="brand-icon">K</div>
-            <div class="brand-text">KARU</div>
+            <div class="brand-icon">T</div>
+            <div class="brand-text">Trote</div>
         </div>
         <div class="header-actions">
             <button class="btn-icon" id="btn-config" onclick="abrirConfig()" aria-label="Editar Perfil" style="display:none;">
@@ -38,7 +38,7 @@
         <div class="card" style="padding: 32px 24px;">
             <form id="form-setup" style="display: flex; flex-direction: column; gap: 24px;">
                 
-                <!-- BARRA DE PROGRESSO (AGORA COM 5) -->
+                <!-- BARRA DE PROGRESSO -->
                 <div class="wizard-progress" style="margin-bottom: 8px;">
                     <div class="progress-dot active" id="dot-1"></div>
                     <div class="progress-dot" id="dot-2"></div>
@@ -85,14 +85,13 @@
                     </div>
                 </div>
 
-               <!-- PASSO 3: AGENDA (VIBE iOS) -->
+               <!-- PASSO 3: AGENDA -->
                 <div class="wizard-step" id="step-3">
                     <div style="text-align: center; margin-bottom: 32px;">
                         <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.6rem; color: var(--brand-accent); font-weight: 800; letter-spacing: -0.5px;">A sua rotina</h3>
                         <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">Quais dias você vai pra rua?</p>
                     </div>
 
-                    <!-- Novo Container iOS -->
                     <div class="ios-days-wrapper">
                         <input type="checkbox" name="setup-dias" value="1" id="d-seg" class="ios-day-checkbox">
                         <label class="ios-day-label" for="d-seg">SEG</label>
@@ -163,7 +162,7 @@
                     </div>
                 </div>
 
-                <!-- PASSO 5: A GARAGEM (O FINALE) -->
+                <!-- PASSO 5: A GARAGEM -->
                 <div class="wizard-step" id="step-5">
                     <div style="text-align: center; margin-bottom: 32px;">
                         <h3 style="font-family: 'Outfit', sans-serif; font-size: 1.6rem; color: var(--brand-accent); font-weight: 800; letter-spacing: -0.5px;">Escolha sua arma</h3>
@@ -253,7 +252,7 @@
             <div id="ui-garagem" style="display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
         
-<!-- CARD: ESTRATÉGIA DE PROVA -->
+        <!-- CARD: ESTRATÉGIA DE PROVA -->
         <div class="card" style="margin-top: 20px; border-left: 4px solid var(--brand-accent);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h2 style="margin-bottom: 0;">
@@ -314,7 +313,6 @@
             <input type="hidden" id="treino-id">
             <input type="hidden" id="input-tipo">
             
-            <!-- Linha 50/50 cravada (sem coluna fantasma) -->
             <div class="form-group full-width" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div class="form-group">
                     <label for="input-dist">Distância Real (km)</label>
@@ -415,6 +413,7 @@
         </form>
     </div>
 </div>
+
 <!-- MODAL: ESTRATÉGIA DE PROVA -->
 <div class="modal-overlay" id="modal-estrategia" onclick="fecharModaisFora(event, 'modal-estrategia')">
     <div class="card modal-card" id="card-estrategia" onclick="event.stopPropagation()">
@@ -427,9 +426,9 @@
                     <input type="number" step="0.1" id="est-distancia" required>
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
-    <label>Tempo Alvo (HH:MM)</label>
-    <input type="text" id="est-tempo" placeholder="01:55" required>
-</div>
+                    <label>Tempo Alvo (HH:MM)</label>
+                    <input type="text" id="est-tempo" placeholder="01:55" required>
+                </div>
             </div>
             <div class="form-group full-width">
                 <label>Tática</label>
