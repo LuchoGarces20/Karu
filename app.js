@@ -5,13 +5,11 @@ function applyTheme(themeName) {
     body.setAttribute('data-theme', themeName);
     localStorage.setItem('trote_theme', themeName);
 
-    // Sincroniza a barra do celular com o tom do fundo
     const themeColorMeta = document.getElementById('theme-color-meta');
     if (themeColorMeta) {
         themeColorMeta.setAttribute('content', themeName === 'dark' ? '#121212' : '#F4F5F7');
     }
 
-    // Alterna a logo do cabeçalho e o favicon
     const brandLogo = document.getElementById('brand-logo-img');
     const favicon = document.querySelector('link[rel="icon"]');
     const isDark = themeName === 'dark';
@@ -24,8 +22,10 @@ function applyTheme(themeName) {
     }
 }
 
-// Inicializa com o tema salvo no localStorage (ou 'dark' por padrão)
-const savedTheme = localStorage.getItem('trote_theme') || 'dark';
+// Detecta se o sistema operacional está em Dark Mode; caso contrário, usa 'light'
+const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const savedTheme = localStorage.getItem('trote_theme') || (systemPrefersDark ? 'dark' : 'light');
+
 applyTheme(savedTheme);
 
 if (themeToggleBtn) {
