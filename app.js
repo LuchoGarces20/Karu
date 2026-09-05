@@ -4,8 +4,28 @@ const body = document.body;
 function applyTheme(themeName) {
     body.setAttribute('data-theme', themeName);
     localStorage.setItem('trote_theme', themeName);
+
+    // Sincroniza a barra do celular com o tom do fundo
+    const themeColorMeta = document.getElementById('theme-color-meta');
+    if (themeColorMeta) {
+        themeColorMeta.setAttribute('content', themeName === 'dark' ? '#121212' : '#F4F5F7');
+    }
+
+    // Alterna a logo do cabeçalho e o favicon
+    const brandLogo = document.getElementById('brand-logo-img');
+    const favicon = document.querySelector('link[rel="icon"]');
+    const isDark = themeName === 'dark';
+
+    if (brandLogo) {
+        brandLogo.src = isDark ? 'img/Trote-logo.svg' : 'img/Trote-logo-light.svg';
+    }
+    if (favicon) {
+        favicon.href = isDark ? 'img/Trote-logo.svg' : 'img/Trote-logo-light.svg';
+    }
 }
-const savedTheme = localStorage.getItem('trote_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+// Inicializa com o tema salvo no localStorage (ou 'dark' por padrão)
+const savedTheme = localStorage.getItem('trote_theme') || 'dark';
 applyTheme(savedTheme);
 
 if (themeToggleBtn) {
@@ -155,7 +175,7 @@ class RunningCoach {
             plano: [], treinosRealizados: [], logs: []
         };
         
-        this.state.logs.push({ data: new Date().toLocaleDateString('pt-BR'), msg: `Calibração Karvonen ativa (FC Máx: ${fcMaxCalc}, Repouso: ${dadosForm.fcRepouso}). Tênis '${dadosForm.tenisNome}' cadastrado.` });
+        this.state.logs.push({ data: new Date().toLocaleDateString('pt-BR'), msg: `Calibração Karvonen & VDOT ativa. FC Máx: ${fcMaxCalc}, Repouso: ${dadosForm.fcRepouso}.` });
         
         this.gerarPlanoTreino();
         this.recalcularLinhaDoTempo();
@@ -172,56 +192,53 @@ class RunningCoach {
         let idCounter = 0; 
         this.state.plano = [];
         const volSemanalBase = this.state.atleta.volumeSemanalBase;
+        const distAlvo = this.state.prova.distancia;
         
-        const capFisiologico = volSemanalBase * 2.2;
-        const capProva = Math.max(volSemanalBase * 1.15, this.state.prova.distancia * 2.2);
+        // Teto de volume sustentável e teto absoluto do longão baseado na prova alvo
+        let maxLongao;
+        if (distAlvo >= 42.2) maxLongao = 34;
+        else if (distAlvo >= 21.1) maxLongao = 22;
+        else if (distAlvo > 5) maxLongao = 14;
+        else maxLongao = 10;
+
+        const capFisiologico = volSemanalBase * 2.5;
+        const capProva = Math.max(volSemanalBase * 1.2, distAlvo * 2.2);
         const capSemanalAbsoluto = Math.min(capFisiologico, capProva);
         
-let maxLongao;
-const distAlvo = this.state.prova.distancia;
-
-if (distAlvo >= 42.2) {
-    maxLongao = 34;
-} else if (distAlvo >= 21.1) {
-    maxLongao = 22;
-} else if (distAlvo > 5) {
-    maxLongao = 14; // Teto de 14km para provas de 10k, ideal para ganho de base
-} else {
-    maxLongao = 10; // Teto de 10km para provas de 5k
-}        const semanasTotais = Math.ceil((diasTotais + 1) / 7);
-        
+        const semanasTotais = Math.ceil((diasTotais + 1) / 7);
         let volumesSemanais = [];
         let picoVolumeEfetivo = volSemanalBase;
         let volumeCorrida = volSemanalBase;
         
+        // PERIODIZAÇÃO AVANÇADA POR BLOCOS
         for (let w = 0; w < semanasTotais; w++) {
             const semanasParaProva = semanasTotais - w;
             let fasePlano = "";
             
-            if (semanasParaProva > 24) {
-                fasePlano = "Manutenção";
-                volumeCorrida = Math.min(volumeCorrida * 1.01, volSemanalBase * 1.2);
-            } else if (semanasParaProva > 12) {
-                fasePlano = "Base Aeróbica";
-                volumeCorrida = Math.min(volumeCorrida * 1.025, capSemanalAbsoluto * 0.8);
-            } else if (semanasParaProva > 2) {
-                fasePlano = "Construção/Especificidade";
-                volumeCorrida = Math.min(volumeCorrida * 1.035, capSemanalAbsoluto);
-                if (volumeCorrida > picoVolumeEfetivo) picoVolumeEfetivo = volumeCorrida;
+            if (semanasParaProva <= 2) {
+                fasePlano = "Polimento (Tapering)";
+            } else if (semanasParaProva <= 10) {
+                fasePlano = `Específico para ${distAlvo}k`;
+                volumeCorrida = Math.min(volumeCorrida * 1.03, capSemanalAbsoluto);
+            } else if (semanasParaProva <= 18) {
+                fasePlano = "Construção de Limiar";
+                volumeCorrida = Math.min(volumeCorrida * 1.025, capSemanalAbsoluto * 0.9);
             } else {
-                fasePlano = "Polimento";
+                // Prazo longo (>18 semanas): Bloco Inicial de Velocidade/VOMáx (Evita Monotonia)
+                fasePlano = "Base & Velocidade (5k/10k)";
+                volumeCorrida = Math.min(volumeCorrida * 1.015, volSemanalBase * 1.3);
+            }
+
+            if (fasePlano !== "Polimento (Tapering)" && volumeCorrida > picoVolumeEfetivo) {
+                picoVolumeEfetivo = volumeCorrida;
             }
             
             let volSemanalAtual = volumeCorrida;
             const ehDeload = (w % 4 === 3) && semanasParaProva > 2;
             
-            if (semanasParaProva === 2) {
-                volSemanalAtual = picoVolumeEfetivo * 0.60;
-            } else if (semanasParaProva === 1) {
-                volSemanalAtual = picoVolumeEfetivo * 0.40;
-            } else if (ehDeload) {
-                volSemanalAtual *= 0.75;
-            }
+            if (semanasParaProva === 2) volSemanalAtual = picoVolumeEfetivo * 0.60;
+            else if (semanasParaProva === 1) volSemanalAtual = picoVolumeEfetivo * 0.40;
+            else if (ehDeload) volSemanalAtual *= 0.75;
             
             volumesSemanais.push({ vol: volSemanalAtual, fase: fasePlano, ehDeload: ehDeload, semanasParaProva: semanasParaProva });
         }
@@ -242,138 +259,125 @@ if (distAlvo >= 42.2) {
             let tipo = "Descanso", distancia = 0, prescricao = "", estrutura = [];
             
             if (i === diasTotais) {
-                tipo = "PROVA ALVO"; distancia = this.state.prova.distancia; 
-                prescricao = "O trabalho está feito. Confie no polimento e execute.";
-                estrutura = [`${distancia}km contínuos com estratégia de prova.`];
+                tipo = "PROVA ALVO"; distancia = distAlvo; 
+                prescricao = "O trabalho está feito. Confie no polimento e execute a estratégia.";
+                estrutura = [`${distancia}km contínuos no pace alvo da prova.`];
             } else if ((diaSemanaNormal === longao || diaSemana === longao) && i !== diasTotais) {
-                const pctLongao = numRegen === 0 ? 0.60 : 0.45;
+                const pctLongao = numRegen === 0 ? 0.55 : 0.42;
                 distancia = Math.min(volSemanalAtual * pctLongao, maxLongao); 
                 const distKm = parseFloat(distancia.toFixed(1));
-                const distAlvo = this.state.prova.distancia;
 
                 if (semanasParaProva <= 2) {
                     tipo = "Longão de Polimento";
-                    prescricao = "Tapering (Polimento). Absorção de carga, volume reduzido e zero estresse metabólico.";
-                    estrutura = [`${distKm}km suaves em Z2 rígida.`];
+                    prescricao = "Tapering. Absorção de carga, volume reduzido e hidratação.";
+                    estrutura = [`${distKm}km suaves em Z2.`];
                 } else if (ehDeload) {
                     tipo = "Longão Regenerativo";
-                    prescricao = "Semana Regenerativa (Deload). Foco em assimilação de carga e recuperação tecidual.";
+                    prescricao = "Semana de assimilação de carga. Foco em recuperação tecidual.";
                     estrutura = [`${distKm}km leves em Z2.`];
-                } else if (fasePlano === "Base Aeróbica" || fasePlano === "Manutenção") {
+                } else if (fasePlano.includes("Base & Velocidade")) {
                     if (numeroSemanaAtual % 2 === 0) {
                         tipo = "Longão Aeróbico (LISS)";
-                        prescricao = "Construção aeróbica primária. Segure o ritmo rigorosamente em Z2 para otimizar eficiência energética.";
-                        estrutura = [`${distKm}km contínuos em Z2 rígida.`];
+                        prescricao = "Construção de capilarização muscular. Mantenha Z2 estrita.";
+                        estrutura = [`${distKm}km contínuos em Z2.`];
                     } else {
                         tipo = "Longão Progressivo";
                         const baseKm = (distKm * 0.7).toFixed(1);
                         const finalKm = (distKm - parseFloat(baseKm)).toFixed(1);
-                        prescricao = "Progressão de ritmo. Ensina o corpo a recrutar fibras musculares sob fadiga inicial.";
-                        estrutura = [
-                            `Início: ${baseKm}km confortáveis em Z2`,
-                            `Final: ${finalKm}km acelerando progressivamente até Z3`
-                        ];
+                        prescricao = "Progressão moderada no final para recrutar fibras em fadiga leve.";
+                        estrutura = [`Início: ${baseKm}km em Z2`, `Final: ${finalKm}km acelerando até Z3`];
                     }
                 } else {
-                    const modSemana = numeroSemanaAtual % 3;
+                    // FASES ESPECÍFICAS E CONSTRUÇÃO (Alta variedade)
+                    const modSemana = numeroSemanaAtual % 4;
 
                     if (modSemana === 0) {
                         tipo = "Longão Rodagem Z2";
-                        prescricao = "Acúmulo de volume específico. Mantenha a disciplina na Zona 2.";
+                        prescricao = "Base aeróbica pura e queima de gordura como combustível.";
                         estrutura = [`${distKm}km contínuos em Z2.`];
                     } else if (modSemana === 1) {
-                        tipo = "Longão Fast Finish (Final Forte)";
+                        tipo = "Longão Fast Finish";
                         const kmForte = distAlvo >= 21.1 ? 5 : 3;
                         const kmZ2 = Math.max(2, distKm - kmForte).toFixed(1);
                         const kmAtaque = (distKm - parseFloat(kmZ2)).toFixed(1);
-                        prescricao = "Simulação de final de prova. Acostume a mente e as pernas a responderem cansadas.";
-                        estrutura = [
-                            `Base: ${kmZ2}km constantes em Z2`,
-                            `Ataque: Últimos ${kmAtaque}km firmes no Pace de Prova (Z3/Z4)`
-                        ];
-                    } else {
-                        tipo = "Longão Específico (Blocos de Ritmo)";
-                        const aquecKm = Math.max(2, parseFloat((distKm * 0.25).toFixed(1)));
-                        const ritmoKm = parseFloat((distKm * 0.50).toFixed(1));
+                        prescricao = "Simulação mental de fim de prova. Termine com pernas cansadas mas fortes.";
+                        estrutura = [`Base: ${kmZ2}km em Z2`, `Ataque: Últimos ${kmAtaque}km no Pace de Prova (Z3/Z4)`];
+                    } else if (modSemana === 2) {
+                        tipo = "Longão em Blocos de Ritmo";
+                        const aquecKm = Math.max(2, parseFloat((distKm * 0.20).toFixed(1)));
+                        const ritmoKm = parseFloat((distKm * 0.60).toFixed(1));
                         const solturaKm = parseFloat((distKm - aquecKm - ritmoKm).toFixed(1));
-                        prescricao = `Especificidade total para ${distAlvo}k: Sustentação do ritmo alvo em estado de pré-fadiga.`;
-                        estrutura = [
-                            `Aquecimento: ${aquecKm}km em Z2`,
-                            `Bloco Alvo: ${ritmoKm}km cravados no Pace da Prova (Z3/Z4)`,
-                            `Desaquecimento: ${solturaKm}km leves em Z1/Z2`
-                        ];
+                        prescricao = `Especificidade para ${distAlvo}k: Blocos sustentados no ritmo da prova.`;
+                        estrutura = [`Aquecimento: ${aquecKm}km Z2`, `Bloco Principal: ${ritmoKm}km no Pace de Prova`, `Desaquecimento: ${solturaKm}km Z1`];
+                    } else {
+                        tipo = "Longão Progressivo Avançado";
+                        const terço = (distKm / 3).toFixed(1);
+                        prescricao = "3 Terços: Z2 leve -> Z3 moderado -> Z4 limiar no final.";
+                        estrutura = [`${terço}km Z2`, `${terço}km Z3`, `${terço}km Z4`];
                     }
                 }
             } else if (diaSemanaNormal === tempo || diaSemana === tempo) {
-                const intensos = ["Tempo Run", "Intervalado", "Fartlek", "Subidas"];
-                tipo = intensos[numeroSemanaAtual % 4];
-                const pctTempo = numRegen === 0 ? 0.40 : 0.20;
-                const distAlvo = this.state.prova.distancia;
+                const pctTempo = numRegen === 0 ? 0.38 : 0.22;
                 
-                if(tipo === "Intervalado") {
-                    const ehProvaLonga = distAlvo > 10;
-                    
-                    if (fasePlano === "Polimento") {
-                        tipo = "Tiros de Polimento";
-                        distancia = Math.max(3, volSemanalAtual * 0.15);
-                        prescricao = "Ativação rápida e neuromuscular sem acúmulo de ácido lático.";
-                        estrutura = ["Aquecimento: 15min Z1", "Principal: 4x 400m Z5 (Pausa 90s Z1)", "Soltura: 10min Z1"];
-                    } else if (fasePlano === "Base Aeróbica" || fasePlano === "Manutenção") {
-                        tipo = "Tiros Curtos (Neuromuscular)";
-                        distancia = Math.max(4, volSemanalAtual * pctTempo);
-                        const reps = Math.max(6, Math.min(12, Math.round((distancia * 0.4 * 1000) / 400)));
-                        prescricao = "Desenvolvimento de mecânica de passada, força rápida e teto de velocidade.";
-                        estrutura = ["Aquecimento: 15min Z1 + educativos", `Principal: ${reps}x 400m Z5 (Pausa 60s trote Z1)`, "Soltura: 10min Z1"];
-                    } else if (ehProvaLonga) {
-                        tipo = "Tiros Longos (Limiar/VO2)";
-                        distancia = Math.max(5, volSemanalAtual * pctTempo);
-                        const metrosTiro = distAlvo >= 42.2 ? 2000 : 1000;
-                        const reps = Math.max(3, Math.round((distancia * 0.5 * 1000) / metrosTiro));
-                        const nomeTiro = metrosTiro >= 1000 ? `${metrosTiro / 1000}km` : `${metrosTiro}m`;
-                        prescricao = `Especificidade para ${distAlvo}k: Tiros longos para expansão de limiar de lactato.`;
-                        estrutura = ["Aquecimento: 15min Z1/Z2", `Principal: ${reps}x ${nomeTiro} Z4/Z5 (Pausa 2min Z1)`, "Soltura: 10min Z1"];
-                    } else {
-                        tipo = "Tiros Médios (VO2 Max)";
-                        distancia = Math.max(4, volSemanalAtual * pctTempo);
-                        const metrosTiro = distAlvo <= 5 ? 600 : 800;
-                        const reps = Math.max(4, Math.round((distancia * 0.45 * 1000) / metrosTiro));
-                        prescricao = `Especificidade para ${distAlvo}k: Expansão do teto de VO2 Máx e tolerância à acidose.`;
-                        estrutura = ["Aquecimento: 15min Z1", `Principal: ${reps}x ${metrosTiro}m Z5 (Pausa 90s trote Z1)`, "Soltura: 10min Z1"];
-                    }
-                } else if(tipo === "Tempo Run") {
+                if (fasePlano === "Polimento (Tapering)") {
+                    tipo = "Tiros de Polimento";
+                    distancia = Math.max(3, volSemanalAtual * 0.15);
+                    prescricao = "Manutenção de viço muscular sem gerar metabólitos pesados.";
+                    estrutura = ["Aquecimento: 15min Z1", "Principal: 4x 400m Z5 (Pausa 90s Z1)", "Soltura: 10min Z1"];
+                } else if (fasePlano.includes("Base & Velocidade")) {
+                    const intensosBase = ["Intervalado VO2", "Fartlek", "Subidas", "Tempo Run"];
+                    tipo = intensosBase[numeroSemanaAtual % 4];
                     distancia = Math.max(4, volSemanalAtual * pctTempo);
                     
-                    if (numeroSemanaAtual % 2 === 0) {
-                        prescricao = "Limiar de Lactato. Desconforto controlado em esforço sustentado.";
-                        estrutura = ["Aquecimento: 2km Z1", `Principal: ${Math.max(2, Math.round(distancia-3))}km Z3-Z4`, "Soltura: 1km Z1"];
+                    if (tipo === "Intervalado VO2") {
+                        const reps = Math.max(5, Math.min(10, Math.round((distancia * 0.4 * 1000) / 400)));
+                        prescricao = "Estímulo de velocidade rápida e melhoria da mecânica de passada.";
+                        estrutura = ["Aquecimento: 15min Z1", `Principal: ${reps}x 400m em Z5 (Pausa 60s trote Z1)`, "Soltura: 10min Z1"];
+                    } else if (tipo === "Fartlek") {
+                        prescricao = "Jogo de velocidades livre para sensibilidade de ritmo.";
+                        estrutura = ["Aquecimento: 10min Z1", "Principal: 10x (1min Z4-Z5 / 1min Z1 trote)", "Soltura: 10min Z1"];
+                    } else if (tipo === "Subidas") {
+                        prescricao = "Força específica, recrutamento de fibras e proteção articular.";
+                        estrutura = ["Aquecimento: 15min Z1", "Principal: 8x 30s rampa forte Z5 (descida trote)", "Soltura: 10min Z1"];
                     } else {
-                        tipo = "Cruise Intervals (Fracionado de Limiar)";
+                        prescricao = "Corrida contínua de limiar inicial.";
+                        estrutura = ["Aquecimento: 2km Z1", `Principal: ${Math.max(2, Math.round(distancia - 3))}km em Z3`, "Soltura: 1km Z1"];
+                    }
+                } else {
+                    // FASES DE CONSTRUÇÃO E ESPECÍFICA
+                    const intensosEsp = ["Tempo Run", "Cruise Intervals", "Tiros Longos", "Fartlek Específico"];
+                    tipo = intensosEsp[numeroSemanaAtual % 4];
+                    distancia = Math.max(4, volSemanalAtual * pctTempo);
+
+                    if (tipo === "Tempo Run") {
+                        const kmLimiar = Math.max(3, Math.round(distancia - 3));
+                        prescricao = "Sustentação de Limiar de Lactato (Anatropismo). Desconforto controlado.";
+                        estrutura = ["Aquecimento: 2km Z1", `Principal: ${kmLimiar}km firmes em Z4 (Limiar)`, "Soltura: 1km Z1"];
+                    } else if (tipo === "Cruise Intervals") {
                         const blocoKm = distAlvo >= 21.1 ? 2 : 1;
-                        const reps = Math.max(2, Math.floor((distancia - 3) / blocoKm));
-                        prescricao = "Acúmulo de tempo em limiar de lactato com pausas curtas para menor desgaste fisiológico.";
-                        estrutura = ["Aquecimento: 1.5km Z1", `Principal: ${reps}x ${blocoKm}km Z3/Z4 (Pausa 90s trote Z1)`, "Soltura: 1.5km Z1"];
+                        const reps = Math.max(3, Math.floor((distancia - 3) / blocoKm));
+                        prescricao = "Fracionado de limiar: permite maior tempo total na zona Z4 com pausas curtas.";
+                        estrutura = ["Aquecimento: 1.5km Z1", `Principal: ${reps}x ${blocoKm}km Z4 (Pausa 90s trote Z1)`, "Soltura: 1.5km Z1"];
+                    } else if (tipo === "Tiros Longos") {
+                        const mTiro = distAlvo >= 21.1 ? 2000 : 1000;
+                        const reps = Math.max(3, Math.round((distancia * 0.5 * 1000) / mTiro));
+                        const nomeTiro = mTiro >= 1000 ? `${mTiro / 1000}km` : `${mTiro}m`;
+                        prescricao = "Expansão da potência aeróbica superior e resiliência psicológica.";
+                        estrutura = ["Aquecimento: 15min Z1/Z2", `Principal: ${reps}x ${nomeTiro} em Z4/Z5 (Pausa 2min Z1)`, "Soltura: 10min Z1"];
+                    } else {
+                        prescricao = "Fartlek Específico com alternância entre pace de prova e pace leve.";
+                        estrutura = ["Aquecimento: 10min Z1", "Principal: 6x (3min Pace Prova Z4 / 2min Z2)", "Soltura: 10min Z1"];
                     }
-                } else if(tipo === "Fartlek") {
-                    distancia = Math.max(4, volSemanalAtual * pctTempo);
-                    prescricao = "Mudanças de ritmo. Adaptabilidade e percepção de esforço.";
-                    estrutura = ["Aquecimento: 10min Z1", "Principal: 10x (1min Z4 / 1min Z1)", "Soltura: 10min Z1"];
-                } else if(tipo === "Subidas") {
-                    distancia = Math.max(4, volSemanalAtual * (pctTempo * 0.8));
-                    prescricao = "Força específica, potência muscular e recrutamento motor.";
-                    estrutura = ["Aquecimento: 15min Z1", "Principal: 8x 30s rampa Z5 (desce trotando)", "Soltura: 10min Z1"];
                 }
             } else if (numRegen > 0 && (regen.includes(diaSemanaNormal) || regen.includes(diaSemana))) {
                 tipo = "Regenerativo"; 
                 distancia = Math.max(3, (volSemanalAtual * 0.35) / numRegen); 
-                prescricao = "Active Recovery e soltura muscular com acelerações leves no final.";
+                prescricao = "Recovery ativo e flushing de resíduos metabólicos.";
                 
-                if (fasePlano !== "Polimento") {
-                    estrutura = [
-                        `${distancia.toFixed(1)}km extremamente leves em Z1`,
-                        "Final: 4x 80m Strides (Acelerações progressivas soltas)"
-                    ];
+                if (fasePlano !== "Polimento (Tapering)") {
+                    estrutura = [`${distancia.toFixed(1)}km em Z1 (Sem pressa)`, "Final: 4x 80m Strides (Acelerações soltas)"];
                 } else {
-                    estrutura = [`${distancia.toFixed(1)}km extremamente leve (Z1)`];
+                    estrutura = [`${distancia.toFixed(1)}km em Z1 estrita`];
                 }
             }
             
@@ -406,14 +410,26 @@ if (distAlvo >= 42.2) {
         const hrr = fcMax - fcRepouso;
         
         const calcBPM = (minPct, maxPct) => `${Math.round(fcRepouso + (minPct * hrr))}-${Math.round(fcRepouso + (maxPct * hrr))} bpm`;
+        
+        // ZONAS CALIBRADAS POR VDOT (Jack Daniels) & KARVONEN
         return {
-            "Regenerativo": { pace: `${this._segundosParaPace(base * 1.30)}/km`, fc: `Z1 (${calcBPM(0.50, 0.60)})` },
+            "Regenerativo": { pace: `${this._segundosParaPace(base * 1.28)}/km`, fc: `Z1 (${calcBPM(0.50, 0.60)})` },
             "Longão": { pace: `${this._segundosParaPace(base * 1.15)}/km`, fc: `Z2 (${calcBPM(0.60, 0.70)})` },
-            "Tempo Run": { pace: `${this._segundosParaPace(base * 0.98)}/km`, fc: `Z3/Z4 (${calcBPM(0.75, 0.85)})` },
+            "Longão Rodagem Z2": { pace: `${this._segundosParaPace(base * 1.15)}/km`, fc: `Z2 (${calcBPM(0.60, 0.70)})` },
+            "Longão Aeróbico (LISS)": { pace: `${this._segundosParaPace(base * 1.16)}/km`, fc: `Z2 (${calcBPM(0.60, 0.70)})` },
+            "Longão Progressivo": { pace: `${this._segundosParaPace(base * 1.15)} ➔ ${this._segundosParaPace(base * 1.03)}/km`, fc: `Z2 ➔ Z3` },
+            "Longão Fast Finish": { pace: `${this._segundosParaPace(base * 1.15)} ➔ ${this._segundosParaPace(base * 0.98)}/km`, fc: `Z2 ➔ Z4` },
+            "Longão em Blocos de Ritmo": { pace: `Z2 / Bloco: ${this._segundosParaPace(base * 1.01)}/km`, fc: `Z2 / Z3-Z4` },
+            "Longão Progressivo Avançado": { pace: "Z2 ➔ Z3 ➔ Z4", fc: "Z2 ➔ Z3 ➔ Z4" },
+            "Tempo Run": { pace: `${this._segundosParaPace(base * 0.97)}/km`, fc: `Z4 (${calcBPM(0.80, 0.88)})` },
+            "Cruise Intervals": { pace: `${this._segundosParaPace(base * 0.96)}/km`, fc: `Z4 (${calcBPM(0.82, 0.88)})` },
+            "Tiros Longos": { pace: `${this._segundosParaPace(base * 0.92)}/km`, fc: `Z4/Z5 (${calcBPM(0.88, 0.94)})` },
             "Intervalado VO2": { pace: `${this._segundosParaPace(base * 0.85)}/km`, fc: `Z5 (${calcBPM(0.90, 1.00)})` },
-            "Fartlek": { pace: "Variado", fc: `Z2 a Z4 (${calcBPM(0.60, 0.85)})` },
-            "Subidas": { pace: "Esforço Máx", fc: `Z5 (${calcBPM(0.90, 1.00)})` },
-            "PROVA ALVO": { pace: `${this._segundosParaPace(base * 1.02)}/km`, fc: `Z4/Máx` },
+            "Tiros Curtos (Neuromuscular)": { pace: `${this._segundosParaPace(base * 0.82)}/km`, fc: `Z5 (${calcBPM(0.92, 1.00)})` },
+            "Fartlek": { pace: "Variado (Z2 a Z5)", fc: `Z2 a Z5 (${calcBPM(0.60, 0.90)})` },
+            "Fartlek Específico": { pace: "Variado", fc: "Z2 a Z4" },
+            "Subidas": { pace: "Esforço Máx Rampa", fc: `Z5 (${calcBPM(0.90, 1.00)})` },
+            "PROVA ALVO": { pace: `${this._segundosParaPace(base * 1.01)}/km`, fc: `Z3/Z4` },
             "Descanso": { pace: "-", fc: "-" }
         };
     }
@@ -423,7 +439,7 @@ if (distAlvo >= 42.2) {
         const ativos = lista.filter(t => !t.aposentado);
         if (ativos.length === 0) return null;
         
-        const ehVelocidade = tipoTreino.includes("Tempo") || tipoTreino.includes("Intervalado") || tipoTreino === "PROVA ALVO";
+        const ehVelocidade = tipoTreino.includes("Tempo") || tipoTreino.includes("Intervalado") || tipoTreino.includes("Tiros") || tipoTreino === "PROVA ALVO";
         const categoriaAlvo = ehVelocidade ? "velocidade" : "rodagem";
         let sugerido = ativos.find(t => t.categoria === categoriaAlvo);
         if (!sugerido) sugerido = ativos.find(t => t.categoria === "versatil");
@@ -505,9 +521,9 @@ if (distAlvo >= 42.2) {
             
             let expectedRPE = 5;
             if(treino.tipo === "Regenerativo") expectedRPE = 3;
-            else if(treino.tipo === "Longão") expectedRPE = 6;
-            else if(["Tempo Run", "Fartlek"].includes(treino.tipo)) expectedRPE = 8;
-            else if(["Intervalado VO2", "Subidas"].includes(treino.tipo)) expectedRPE = 9;
+            else if(treino.tipo.includes("Longão")) expectedRPE = 6;
+            else if(["Tempo Run", "Fartlek", "Cruise Intervals"].includes(treino.tipo)) expectedRPE = 8;
+            else if(["Intervalado VO2", "Subidas", "Tiros Longos"].includes(treino.tipo)) expectedRPE = 9;
 
             if (log.rpeReal >= expectedRPE + 2 || log.rpeReal >= 9) {
                 fadigaCritica++;
@@ -535,24 +551,24 @@ if (distAlvo >= 42.2) {
                 if (!prox.ajustadoPorIA) {
                     let msgAcao = "";
 
-                    if (["Tempo Run", "Intervalado VO2", "Subidas", "Fartlek"].includes(prox.tipo)) {
+                    if (!prox.tipo.includes("Regenerativo") && !prox.tipo.includes("Longão")) {
                         prox.tipoOriginal = prox.tipo;
                         prox.tipo = "Regenerativo";
-                        prox.prescricao = "⚠️ OVERREACHING DETECTADO. O Trote bloqueou esta sessão de velocidade para evitar colapso do seu sistema nervoso. Respeite rigorosamente a Z1.";
+                        prox.prescricao = "⚠️ OVERREACHING DETECTADO. Sessão convertida para regenerativa em Z1 para dissipar fadiga aguda do sistema nervoso.";
                         const novaDist = Math.max(3, parseFloat((prox.distanciaBase * 0.7).toFixed(1)));
                         prox.distanciaBase = novaDist;
-                        prox.estrutura = [`${novaDist}km extremamente leve (Z1)`];
+                        prox.estrutura = [`${novaDist}km extremamente leve em Z1`];
                         msgAcao = `Treino de ${prox.tipoOriginal} convertido em Regenerativo.`;
                     } else {
                         const oldDist = prox.distanciaBase;
                         prox.distanciaBase = parseFloat((oldDist * 0.70).toFixed(1));
-                        prox.prescricao = "⚠️ RISCO DE LESÃO ALTO. Volume do treino cortado em 30% sistemicamente para forçar a queda da sua fadiga aguda (ATL).";
+                        prox.prescricao = "⚠️ ALERTA SOBRECARGA: Volume reduzido em 30% sistemicamente para prevenir lesões teciduais.";
                         if(prox.estrutura && prox.estrutura.length > 0) {
-                            prox.estrutura[0] = `${prox.distanciaBase}km mantendo a disciplina do pace de recuperação.`;
+                            prox.estrutura[0] = `${prox.distanciaBase}km focado em ritmo de recuperação.`;
                         } else {
-                            prox.estrutura = [`${prox.distanciaBase}km focados em recovery.`];
+                            prox.estrutura = [`${prox.distanciaBase}km em recovery.`];
                         }
-                        msgAcao = `Volume de ${oldDist}km cortado para ${prox.distanciaBase}km.`;
+                        msgAcao = `Volume cortado de ${oldDist}km para ${prox.distanciaBase}km.`;
                     }
                     
                     prox.ajustadoPorIA = true;
@@ -561,7 +577,7 @@ if (distAlvo >= 42.2) {
                     const [, m, d] = prox.dataISO.split('-');
                     this.state.logs.unshift({ 
                         data: new Date().toLocaleDateString('pt-BR'), 
-                        msg: `🚨 <b>Protocolo de Sobrevivência IA (${d}/${m}):</b> ${msgAcao}` 
+                        msg: `🚨 <b>Protocolo IA (${d}/${m}):</b> ${msgAcao}` 
                     });
                 }
             });
@@ -808,10 +824,10 @@ function atualizarTelasGlobais() {
     let themeGlow = 'var(--brand-glow)';
     
     if (treinoHoje && !treinoHoje.concluido && treinoHoje.tipo !== "Descanso") {
-        if (["Tempo Run", "Fartlek", "PROVA ALVO"].includes(treinoHoje.tipo)) {
+        if (["Tempo Run", "Fartlek", "Cruise Intervals", "PROVA ALVO"].includes(treinoHoje.tipo)) {
             themeColor = 'var(--warning)'; 
             themeGlow = 'rgba(245, 158, 11, 0.2)';
-        } else if (["Intervalado VO2", "Subidas"].includes(treinoHoje.tipo)) {
+        } else if (["Intervalado VO2", "Subidas", "Tiros Longos", "Tiros Curtos (Neuromuscular)"].includes(treinoHoje.tipo)) {
             themeColor = 'var(--danger)'; 
             themeGlow = 'rgba(239, 68, 68, 0.2)';
         }
@@ -1149,7 +1165,7 @@ document.getElementById('form-setup').addEventListener('submit', (e) => {
     const diasAteProva = Math.ceil((dAlvo - new Date()) / (1000 * 60 * 60 * 24));
     
     if (diasAteProva < 21) {
-        const confirmar = confirm("⚠️ Atenção! Sua prova é em menos de 3 semanas.\n\nO Trote não terá tempo para construir aptidão física (Fitness) e entrará diretamente na fase de Polimento (redução de volume) para descansar suas pernas.\n\nDeseja continuar mesmo assim?");
+        const confirmar = confirm("⚠️ Atenção! Sua prova é em menos de 3 semanas.\n\nO Trote entrará diretamente na fase de Polimento (redução de volume) para descansar suas pernas.\n\nDeseja continuar?");
         if (!confirmar) return;
     }
     
@@ -1192,7 +1208,7 @@ window.abrirTreino = function(id, tipo, distCalculada) {
     const zonas = app.obterZonasKarvonen();
     let estimativaMin = 45; 
     if(zonas[tipo] && zonas[tipo].pace !== "-" && !zonas[tipo].pace.includes("Variado") && !zonas[tipo].pace.includes("Máx")) {
-        const paceStr = zonas[tipo].pace.replace('/km', '');
+        const paceStr = zonas[tipo].pace.split(' ')[0].replace('/km', '');
         const paceSegundos = app._paceParaSegundos(paceStr);
         estimativaMin = Math.round((paceSegundos * distCalculada) / 60);
     } else {
